@@ -1,15 +1,31 @@
 {
-  "name": "old",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "source": "src/index.ts",
+  "module": "dist/card.js",
+  "targets": {
+    "module": {
+      "includeNodeModules": true
+    }
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "scripts": {
+    "watch": "parcel watch",
+    "build": "parcel build"
+  },
+  "devDependencies": {
+    "@parcel/transformer-inline-string": "^2.8.3",
+    "@types/jquery": "^3.5.16",
+    "@types/node": "^20.3.3",
+    "buffer": "^6.0.3",
+    "parcel": "^2.8.3"
+  },
   "dependencies": {
-    "parcel": "^2.9.3"
+    "axios": "^1.4.0",
+    "child_process": "^1.0.2",
+    "custom-card-helpers": "^1.9.0",
+    "d3": "^7.8.5",
+    "fs": "^0.0.1-security",
+    "home-assistant-js-websocket": "^8.0.1",
+    "lit": "^2.7.4",
+    "luci": "^2.4.0",
+    "lucy": "^0.1.5"
   }
 }
