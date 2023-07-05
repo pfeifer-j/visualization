@@ -598,6 +598,7 @@ var _lit = require("lit");
 var _cardStyles = require("./card.styles");
 var _state = require("lit/decorators/state");
 var _d3 = require("d3");
+var _graphGeneration = require("./graphGeneration");
 class NetworkVisualization extends (0, _lit.LitElement) {
     // Lifecycle interface
     setConfig(config) {
@@ -624,12 +625,12 @@ class NetworkVisualization extends (0, _lit.LitElement) {
         };
     }
     render() {
-        let content = (0, _lit.html)`<svg id="networkSvg"></svg>`;
+        const content = (0, _lit.html)`<svg id="networkSvg"></svg>`;
         const svgId = "networkSvg";
         const svgSelector = `#${svgId}`;
         setTimeout(()=>{
             const svg = _d3.select(this.renderRoot.querySelector(svgSelector));
-            this.initializeD3();
+            (0, _graphGeneration.initializeD3)(this);
         }, 0);
         return (0, _lit.html)`
       <ha-card header="${this._header}">
@@ -637,154 +638,12 @@ class NetworkVisualization extends (0, _lit.LitElement) {
       </ha-card>
     `;
     }
-    // Initialize the d3.js visualization
-    initializeD3() {
-        const svgSelector = "#networkSvg";
-        const svgElement = this.renderRoot.querySelector(svgSelector);
-        // Define the dimensions of the card and the SVG element
-        const cardWidth = 500;
-        const cardHeight = 500;
-        const svgWidth = cardWidth - 20; // Subtracting padding
-        const svgHeight = cardHeight - 20; // Subtracting padding
-        // Create the zoom behavior
-        const zoom = _d3.zoom().scaleExtent([
-            0.5,
-            2
-        ]) // Limit the zoom range
-        .on("zoom", zoomed);
-        // Apply the zoom behavior to the SVG element
-        svgElement.setAttribute("width", svgWidth.toString());
-        svgElement.setAttribute("height", svgHeight.toString());
-        svgElement.parentElement?.setAttribute("style", `width: ${cardWidth}px; height: ${cardHeight}px; overflow: auto;`);
-        const svg = _d3.select(svgElement).call(zoom);
-        var width = svg.attr("width");
-        var height = svg.attr("height");
-        // generate graph
-        var graphData = {
-            nodes: [],
-            links: []
-        };
-        const devices = getDevices();
-        devices.forEach((device)=>{
-            const [hostname, ip, mac, reachable] = device;
-            graphData.nodes.push({
-                name: ip,
-                hostname: hostname,
-                mac: mac,
-                reachable: reachable
-            });
-            if (ip !== "192.168.1.1") graphData.links.push({
-                source: "192.168.1.1",
-                target: ip
-            });
-        });
-        // Add the hardcoded device to the nodes array
-        graphData.nodes.push({
-            name: "192.168.1.1",
-            hostname: "OpenWRT",
-            mac: "00:00:00:00:00:00",
-            reachable: true
-        });
-        const tooltip = _d3.select("body").append("div").attr("class", "tooltip");
-        //.style("opacity", 0);
-        const links = svg.append("g").selectAll("line").data(graphData.links).enter().append("line").attr("stroke-width", 1).style("stroke", "darkgray");
-        links.append("text").text((d)=>d.name);
-        const nodes = svg.append("g").selectAll("circle").data(graphData.nodes).enter().append("circle").attr("r", 10).attr("fill", (node)=>node.reachable ? "#43AF11" : "#F03A47").attr("ip", (node)=>node.name).attr("hostname", (node)=>node.hostname).attr("mac", (node)=>node.mac).attr("reachable", (node)=>node.reachable).on("mouseover", handleMouseOver).on("mouseout", handleMouseOut);
-        // Select the node with IP "192.168.1.1" and update its attributes
-        const specialNode = svg.select("circle[ip='192.168.1.1']").attr("r", 12).attr("fill", "lightblue");
-        function handleMouseOver(d, i) {
-            _d3.select(this).transition().duration(200);
-            tooltip.transition().duration(200).style("opacity", 0);
-        }
-        function handleMouseOut(d, i) {
-            _d3.select(this).transition().duration(200);
-            tooltip.transition().duration(200).style("opacity", 0);
-        }
-        var simulation = _d3.forceSimulation(graphData.nodes).force("charge", _d3.forceManyBody().strength(-1000)).force("center", _d3.forceCenter(width / 2, height / 2)).force("link", _d3.forceLink(graphData.links).id((d)=>d.name)).on("tick", ticked);
-        /*
-    var drag = d3
-      .drag()
-      .on("start", dragstarted)
-      .on("drag", dragged)
-      .on("end", dragended);
-
-    nodes.call(drag);
-    */ //updating the position
-        function ticked() {
-            nodes.attr("cx", function(d) {
-                return d.x;
-            }).attr("cy", function(d) {
-                return d.y;
-            });
-            links.attr("x1", function(d) {
-                return d.source.x;
-            }).attr("y1", function(d) {
-                return d.source.y;
-            }).attr("x2", function(d) {
-                return d.target.x;
-            }).attr("y2", function(d) {
-                return d.target.y;
-            });
-        }
-        // Function to show the tooltip
-        function showTooltip(d, event) {
-            tooltip.transition().duration(200).style("opacity", 0.9);
-            tooltip.html(`
-          <strong>IP:</strong> ${d.name}<br>
-          <strong>Hostname:</strong> ${d.hostname}<br>
-          <strong>MAC:</strong> ${d.mac}<br>
-          <strong>Reachable:</strong> ${d.reachable}
-        `);
-        }
-        // Function to hide the tooltip
-        function hideTooltip() {
-            tooltip.transition().duration(500).style("opacity", 0);
-        }
-        // retrieve devices from router
-        function getDevices() {
-            //const data = '[{ "dev": "br0", "stale": false, "mac": "76:AA:93:FD:81:22", "noarp": false, "permanent": false, "failed": false, "family": 4, "proxy": false, "router": false, "reachable": true, "probe": false, "delay": false, "incomplete": false, "ip": "192.168.1.89", "hostname": "M2012K11AG", "host": "192.168.1.1" }, { "dev": "br0", "stale": true, "mac": "54:EF:44:37:83:F1", "noarp": false, "permanent": false, "failed": false, "family": 4, "proxy": false, "router": false, "reachable": false, "probe": false, "delay": false, "incomplete": false, "ip": "192.168.1.74", "hostname": null, "host": "192.168.1.1" }]';
-            const data = '[{ "dev": "br0", "stale": true, "mac": "76:AA:93:FD:81:22", "noarp": false, "permanent": false, "failed": false, "family": 4, "proxy": false, "router": false, "reachable": false, "probe": false, "delay": false, "incomplete": false, "ip": "192.168.1.89", "hostname": "M2012K11AG", "host": "192.168.1.1" }, { "dev": "br0", "stale": false, "mac": "54:EF:44:37:83:F1", "noarp": false, "permanent": false, "failed": false, "family": 4, "proxy": false, "router": false, "reachable": true, "probe": false, "delay": false, "incomplete": false, "ip": "192.168.1.74", "hostname": null, "host": "192.168.1.1" }, { "dev": "br0", "stale": false, "mac": "34:E1:2D:E3:49:7D", "noarp": false, "permanent": false, "failed": false, "family": 4, "proxy": false, "router": false, "reachable": true, "probe": false, "delay": false, "incomplete": false, "ip": "192.168.1.67", "hostname": null, "host": "192.168.1.1" }, { "dev": "br0", "stale": false, "mac": "E4:5F:01:A5:72:2A", "noarp": false, "permanent": false, "failed": false, "family": 4, "proxy": false, "router": false, "reachable": true, "probe": false, "delay": false, "incomplete": false, "ip": "192.168.1.20", "hostname": "homeassistant", "host": "192.168.1.1" }, { "dev": "br0", "stale": true, "mac": "BA:EC:46:AE:46:E1", "noarp": false, "permanent": false, "failed": false, "family": 4, "proxy": false, "router": false, "reachable": false, "probe": false, "delay": false, "incomplete": false, "ip": "192.168.1.90", "hostname": null, "host": "192.168.1.1" }, { "dev": "eth0", "stale": false, "mac": "00:25:90:BA:B3:63", "noarp": false, "permanent": false, "failed": false, "family": 4, "proxy": false, "router": false, "reachable": true, "probe": false, "delay": false, "incomplete": false, "ip": "132.231.14.129", "hostname": null, "host": "192.168.1.1" }, { "dev": "br0", "stale": true, "mac": "B4:B0:24:44:D3:E2", "noarp": false, "permanent": false, "failed": false, "family": 4, "proxy": false, "router": false, "reachable": false, "probe": false, "delay": false, "incomplete": false, "ip": "192.168.1.85", "hostname": null, "host": "192.168.1.1" }]';
-            const devices = JSON.parse(data);
-            const deviceList = [];
-            for (const device of devices){
-                const deviceEntry = [
-                    device.hostname,
-                    device.ip,
-                    device.mac,
-                    device.reachable
-                ];
-                deviceList.push(deviceEntry);
-            }
-            return deviceList;
-        }
-        function dragstarted(d) {
-        //your alpha hit 0 it stops! make it run again
-        //simulation.alphaTarget(0.3).restart();
-        //d.fx = d3.event.x;
-        //d.fy = d3.event.y;
-        }
-        function dragged(d) {
-        //d.fx = d3.event.x;
-        //d.fy = d3.event.y;
-        }
-        function dragended(d) {
-        // alpha min is 0, head there
-        //simulation.alphaTarget(0);
-        //d.fx = null;
-        //d.fy = null;
-        }
-        // Function to handle zooming
-        function zoomed() {
-        // TODO
-        // svg.attr('transform', d3.event.transform);
-        }
-    }
 }
 (0, _tsDecorate._)([
     (0, _state.state)()
 ], NetworkVisualization.prototype, "_header", void 0);
 
-},{"@swc/helpers/_/_ts_decorate":"lX6TJ","lit":"4antt","./card.styles":"kQPh8","lit/decorators/state":"5Z7m1","d3":"17XFv","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"lX6TJ":[function(require,module,exports) {
+},{"@swc/helpers/_/_ts_decorate":"lX6TJ","lit":"4antt","./card.styles":"kQPh8","lit/decorators/state":"5Z7m1","d3":"17XFv","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./graphGeneration":"jzbJe"}],"lX6TJ":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "_", ()=>(0, _tslib.__decorate));
@@ -1982,132 +1841,19 @@ parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "styles", ()=>styles);
 var _lit = require("lit");
 const styles = (0, _lit.css)`
-  .error {
-    color: red;
-  }
-  .dl {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .dt {
-    display: flex;
-    align-content: center;
-    flex-wrap: wrap;
-  }
-  .dd {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, auto) minmax(0, 2fr));
-    margin: 0;
-  }
-  .toggle {
-    padding: 0.6em;
-    border: grey;
-    border-radius: 50%;
-  }
-  .toggle.on {
-    background-color: blue;
-  }
-  .toggle.off {
-    background-color: orange;
-  }
-  .button {
-    display: block;
-    border: outset 0.2em;
-    border-radius: 50%;
-    border-color: silver;
-    background-color: silver;
-    width: 1.4em;
-    height: 1.4em;
-  }
-  .value {
-    padding-left: 0.5em;
-    display: flex;
-    align-content: center;
-    flex-wrap: wrap;
-  }
-  body {
-    font: 12px sans-serif;
-  }
-  svg {
-      font: 10px sans-serif;
-  }
-  .container {
-      display: table-cell;
-      vertical-align: top;
-      height: 500px;
-      padding: 10px;
-      border: 0px solid black;
-  }
-  .instructions {
-      color: red;
-  }
-  .optional {
-      color: darkgreen;
-  }
-  .axis line,
-  .axis path {
-      fill: none;
-      stroke: #000;
-      shape-rendering: crispEdges;
-  }
-  .axis text {
-      fill: black;
-  }
-  fieldset {
-      border-width: 0;
-  }
-  #legend {
-      border: 1px solid black;
-      padding: 10px;
-  }
-  /* the style for the close-button in the legend */
-  .close {
-      display: inline-block;
-      padding: 1px 5px;
-      margin: 4px;
-      border: 1px solid black;
-      color: #000;
-      background: #fff;
-      font-weight: bold;
-      cursor: pointer;
-      user-select: none;
-  }
-  .close:hover {
-      background: #ddd;
-      cursor: pointer;
-  }
-  /* the style for the circle in the legend */
-  .color-circle {
-      display: inline-block;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-  }
-  /* the style for dots in the scatterplot */
-  .dot {
-      cursor: pointer;
-  }
-  /* tooltip for the scatterplot */
-  div.tooltip {
-      position: absolute;
-      text-align: left;
-      padding: .2rem;
-      margin: 1rem;
-      background: #313639;
-      color: #f9f9f9;
-      border: 0px;
-      border-radius: 8px;
-      pointer-events: none;
-      font-size: .7rem;
+  .tooltip {
+    position: relative;
+    display: inline-block;
+    border-bottom: 1px dotted black; /* If you want dots under the hoverable text */
   }
   .card-content {
-    overflow: auto;
+    overflow: visible;
     height: 100%;
   }
   .graph-container {
     width: 100%;
     height: 100%;
-    overflow: auto;
+    overflow: visible;
     position: relative;
   }
 `;
@@ -25532,7 +25278,135 @@ function nopropagation(event) {
     event.stopImmediatePropagation();
 }
 
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"87WFb":[function(require,module,exports) {
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"jzbJe":[function(require,module,exports) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+// Initialize the d3.js visualization
+parcelHelpers.export(exports, "initializeD3", ()=>initializeD3);
+var _d3 = require("d3");
+function initializeD3(asdf) {
+    // Select the svg and add zooming
+    let svgSelector = "#networkSvg";
+    let svgElement = asdf.renderRoot.querySelector(svgSelector);
+    let svg = _d3.select(svgElement).call(_d3.zoom().on("zoom", function(event) {
+        svg.attr("transform", event.transform);
+    })).append("g");
+    // Define the dimensions of the card and the SVG element
+    let width = 500;
+    let height = 500;
+    let padding = 20;
+    svgElement.setAttribute("width", (width - padding).toString());
+    svgElement.setAttribute("height", (height - padding).toString());
+    svgElement.parentElement?.setAttribute("style", `width: ${width}px; height: ${height}px; overflow: visible;`);
+    // Generate graph
+    let graphData = {
+        nodes: [],
+        links: []
+    };
+    let devices = getDevices();
+    devices.forEach((device)=>{
+        let [hostname, ip, mac, reachable] = device;
+        graphData.nodes.push({
+            name: ip,
+            hostname: hostname,
+            mac: mac,
+            reachable: reachable
+        });
+        if (ip !== "192.168.1.1") graphData.links.push({
+            source: "192.168.1.1",
+            target: ip
+        });
+    });
+    // Add the hardcoded device to the nodes array
+    graphData.nodes.push({
+        name: "192.168.1.1",
+        hostname: "OpenWRT",
+        mac: "00:00:00:00:00:00",
+        reachable: true
+    });
+    let links = svg.append("g").selectAll("line").data(graphData.links).enter().append("line").attr("stroke-width", 1).style("stroke", "darkgray");
+    let nodes = svg.append("g").selectAll("circle").data(graphData.nodes).enter().append("circle").attr("r", 10).attr("fill", (node)=>node.reachable ? "#43AF11" : "#F03A47").attr("ip", (node)=>node.name).attr("hostname", (node)=>node.hostname).attr("mac", (node)=>node.mac).attr("reachable", (node)=>node.reachable).on("mouseover", handleMouseOver).on("mouseout", handleMouseOut);
+    let tooltip = svg.append("g").attr("class", "tooltip").style("opacity", 0);
+    // Select the node with IP "192.168.1.1" and update its attributes
+    let routerNode = svg.select("circle[ip='192.168.1.1']").attr("r", 12).attr("fill", "lightblue");
+    // Add Events to nodes
+    function handleMouseOver(event, d) {
+        _d3.select(this).transition().duration(200).attr("r", 15);
+        let content = "IP: " + this.getAttribute("ip") + "<br/>" + "Hostname: " + this.getAttribute("hostname") + "<br/>" + "MAC: " + this.getAttribute("mac");
+        console.log(content);
+        let tooltipElement = document.querySelector(".tooltip");
+        let tooltip = _d3.select(tooltipElement);
+        if (tooltip) {
+            tooltip.transition().duration(100).style("opacity", 1);
+            // Add content to the tooltip
+            tooltip.html(content);
+            tooltip.style("left", event.pageX + 10 + "px");
+            tooltip.style("top", event.pageY - 15 + "px");
+        }
+    }
+    function handleMouseOut(event, d) {
+        _d3.select(this).transition().duration(200).attr("r", 10).attr("r", this.getAttribute("ip") == "192.168.1.1" ? 13 : 10);
+        let tooltip = this.renderRoot.querySelector(".tooltip");
+        let tooltip2 = this.renderRoot.querySelector(".tooltip");
+        if (tooltip) tooltip.transition().duration(200).style("opacity", 0);
+    }
+    // retrieve devices from router
+    function getDevices() {
+        //let data = '[{ "dev": "br0", "stale": false, "mac": "76:AA:93:FD:81:22", "noarp": false, "permanent": false, "failed": false, "family": 4, "proxy": false, "router": false, "reachable": true, "probe": false, "delay": false, "incomplete": false, "ip": "192.168.1.89", "hostname": "M2012K11AG", "host": "192.168.1.1" }, { "dev": "br0", "stale": true, "mac": "54:EF:44:37:83:F1", "noarp": false, "permanent": false, "failed": false, "family": 4, "proxy": false, "router": false, "reachable": false, "probe": false, "delay": false, "incomplete": false, "ip": "192.168.1.74", "hostname": null, "host": "192.168.1.1" }]';
+        let data = '[{ "dev": "br0", "stale": true, "mac": "76:AA:93:FD:81:22", "noarp": false, "permanent": false, "failed": false, "family": 4, "proxy": false, "router": false, "reachable": false, "probe": false, "delay": false, "incomplete": false, "ip": "192.168.1.89", "hostname": "M2012K11AG", "host": "192.168.1.1" }, { "dev": "br0", "stale": false, "mac": "54:EF:44:37:83:F1", "noarp": false, "permanent": false, "failed": false, "family": 4, "proxy": false, "router": false, "reachable": true, "probe": false, "delay": false, "incomplete": false, "ip": "192.168.1.74", "hostname": null, "host": "192.168.1.1" }, { "dev": "br0", "stale": false, "mac": "34:E1:2D:E3:49:7D", "noarp": false, "permanent": false, "failed": false, "family": 4, "proxy": false, "router": false, "reachable": true, "probe": false, "delay": false, "incomplete": false, "ip": "192.168.1.67", "hostname": null, "host": "192.168.1.1" }, { "dev": "br0", "stale": false, "mac": "E4:5F:01:A5:72:2A", "noarp": false, "permanent": false, "failed": false, "family": 4, "proxy": false, "router": false, "reachable": true, "probe": false, "delay": false, "incomplete": false, "ip": "192.168.1.20", "hostname": "homeassistant", "host": "192.168.1.1" }, { "dev": "br0", "stale": true, "mac": "BA:EC:46:AE:46:E1", "noarp": false, "permanent": false, "failed": false, "family": 4, "proxy": false, "router": false, "reachable": false, "probe": false, "delay": false, "incomplete": false, "ip": "192.168.1.90", "hostname": null, "host": "192.168.1.1" }, { "dev": "eth0", "stale": false, "mac": "00:25:90:BA:B3:63", "noarp": false, "permanent": false, "failed": false, "family": 4, "proxy": false, "router": false, "reachable": true, "probe": false, "delay": false, "incomplete": false, "ip": "132.231.14.129", "hostname": null, "host": "192.168.1.1" }, { "dev": "br0", "stale": true, "mac": "B4:B0:24:44:D3:E2", "noarp": false, "permanent": false, "failed": false, "family": 4, "proxy": false, "router": false, "reachable": false, "probe": false, "delay": false, "incomplete": false, "ip": "192.168.1.85", "hostname": null, "host": "192.168.1.1" }]';
+        let devices = JSON.parse(data);
+        let deviceList = [];
+        for (let device of devices){
+            let deviceEntry = [
+                device.hostname,
+                device.ip,
+                device.mac,
+                device.reachable
+            ];
+            deviceList.push(deviceEntry);
+        }
+        return deviceList;
+    }
+    // Add force-direction
+    let simulation = _d3.forceSimulation(graphData.nodes).force("charge", _d3.forceManyBody().strength(-1000)).force("center", _d3.forceCenter(width / 2, height / 2)).force("link", _d3.forceLink(graphData.links).id((d)=>d.name)).on("tick", ticked);
+    let drag = _d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended);
+    nodes.call(drag);
+    //updating the position
+    function ticked() {
+        nodes.attr("cx", function(d) {
+            return d.x;
+        }).attr("cy", function(d) {
+            return d.y;
+        });
+        links.attr("x1", function(d) {
+            return d.source.x;
+        }).attr("y1", function(d) {
+            return d.source.y;
+        }).attr("x2", function(d) {
+            return d.target.x;
+        }).attr("y2", function(d) {
+            return d.target.y;
+        });
+    }
+    function dragstarted(event, d) {
+        //your alpha hit 0 it stops! make it run again
+        simulation.alphaTarget(0.3).restart();
+        d.fx = event.x;
+        d.fy = event.y;
+    }
+    function dragged(event, d) {
+        d.fx = event.x;
+        d.fy = event.y;
+    }
+    function dragended(event, d) {
+        // alpha min is 0, head there
+        simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+    }
+}
+
+},{"d3":"17XFv","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"87WFb":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "NetworkVisualizationEditor", ()=>NetworkVisualizationEditor);
