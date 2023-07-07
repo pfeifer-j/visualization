@@ -1,6 +1,5 @@
 import { NetworkVisualization } from "./card";
 import { NetworkVisualizationEditor } from "./editor";
-// import { Visualization } from "./vis";
 
 declare global {
   interface Window {

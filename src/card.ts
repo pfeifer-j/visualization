@@ -1,8 +1,9 @@
 import { html, LitElement, TemplateResult, nothing } from "lit";
-import { styles } from "./card.styles";
+import { styles } from "./styles";
 import { state } from "lit/decorators/state";
 import * as d3 from "d3";
-import { initializeD3 } from './graphGeneration';
+import { generateGraph } from './graph';
+
 import { HomeAssistant, LovelaceCardConfig } from "custom-card-helpers";
 
 interface Config extends LovelaceCardConfig {
@@ -61,7 +62,7 @@ export class NetworkVisualization extends LitElement {
 
     setTimeout(() => {
       const svg = d3.select(this.renderRoot.querySelector(svgSelector));
-      initializeD3(this);
+      generateGraph(this);
     }, 0);
 
     return html`
