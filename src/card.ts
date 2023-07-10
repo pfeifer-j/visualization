@@ -2,8 +2,7 @@ import { html, LitElement, TemplateResult, nothing } from "lit";
 import { styles } from "./styles";
 import { state } from "lit/decorators/state";
 import * as d3 from "d3";
-import { generateGraph } from './graph';
-import { generateTable } from './table';
+import { generateView } from './view';
 
 import { HomeAssistant, LovelaceCardConfig } from "custom-card-helpers";
 
@@ -65,16 +64,9 @@ export class NetworkVisualization extends LitElement {
     const graphId = 'graphSvg';
     const graphSelector = `#${graphId}`;
 
-    // Table
-    const tableId = 'tableSvg';
-    const tableSelector = `#${tableId}`;
-
     setTimeout(() => {
       const graphSvg = d3.select(this.renderRoot.querySelector(graphSelector));
-      generateGraph(this);
-
-      const tableSvg = d3.select(this.renderRoot.querySelector(tableSelector));
-      generateTable(this);
+      generateView(this);
     }, 0);
 
     return html`

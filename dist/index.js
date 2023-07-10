@@ -585,63 +585,73 @@ window.customCards.push({
     description: "Through the combination of OpenWRT and OVS all connected wifi devices and their network-flow can be visualized."
 });
 
-},{"./editor":"87WFb","./card":"5dQCx"}],"87WFb":[function(require,module,exports) {
+},{"./card":"5dQCx","./editor":"87WFb"}],"5dQCx":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
-parcelHelpers.export(exports, "NetworkVisualizationEditor", ()=>NetworkVisualizationEditor);
+parcelHelpers.export(exports, "NetworkVisualization", ()=>NetworkVisualization);
 var _tsDecorate = require("@swc/helpers/_/_ts_decorate");
 var _lit = require("lit");
+var _styles = require("./styles");
 var _state = require("lit/decorators/state");
-class NetworkVisualizationEditor extends (0, _lit.LitElement) {
+var _d3 = require("d3");
+var _view = require("./view");
+class NetworkVisualization extends (0, _lit.LitElement) {
+    // Lifecycle interface
     setConfig(config) {
-        this._config = config;
+        this._header = config.header === "" ? (0, _lit.nothing) : config.header;
+        // Call set hass() to immediately adjust to a changed entity
+        // while editing the entity in the card editor
+        if (this._hass) this.hass = this._hass;
+    }
+    set hass(hass) {
+        this._hass = hass;
     }
     static #_ = (()=>{
-        this.styles = (0, _lit.css)`
-    .table {
-      display: table;
-    }
-    .row {
-      display: table-row;
-    }
-    .cell {
-      display: table-cell;
-      padding: 0.5em;
-    }
-  `;
+        // Declarative part
+        this.styles = (0, _styles.styles);
     })();
-    render() {
-        return (0, _lit.html)`
-            <form class="table">
-                <div class="row">
-                    <label class="label cell" for="header">Header:</label>
-                    <input
-                        @change="${this.handleChangedEvent}"
-                        class="value cell" id="header" value="${this._config.header}"></input>
-                </div>
-            </form>
-        `;
+    // Card configuration using the Home Assistant Editor
+    static getConfigElement() {
+        return document.createElement("network-visualization-editor");
     }
-    handleChangedEvent(changedEvent) {
-        const target = changedEvent.target;
-        // this._config is readonly, copy needed
-        const newConfig = Object.assign({}, this._config);
-        if (target.id == "header") newConfig.header = target.value;
-        const messageEvent = new CustomEvent("config-changed", {
-            detail: {
-                config: newConfig
-            },
-            bubbles: true,
-            composed: true
-        });
-        this.dispatchEvent(messageEvent);
+    // Default configuration
+    static getStubConfig() {
+        return {
+            header: "My Network:"
+        };
+    }
+    render() {
+        const content = (0, _lit.html)`
+      <div class="card-container">
+        <div class="graph-container">
+          <svg id="graphSvg"></svg>
+        </div>
+        <div class="table-container">
+          <svg id="tableSvg"></svg>
+        </div>
+      </div>
+    `;
+        // Graph
+        const graphId = "graphSvg";
+        const graphSelector = `#${graphId}`;
+        setTimeout(()=>{
+            const graphSvg = _d3.select(this.renderRoot.querySelector(graphSelector));
+            (0, _view.generateView)(this);
+        }, 0);
+        return (0, _lit.html)`
+      <div class="centered-container">
+        <ha-card header="${this._header}">
+          <div class="card-content">${content}</div>
+        </ha-card>
+      </div>
+    `;
     }
 }
 (0, _tsDecorate._)([
     (0, _state.state)()
-], NetworkVisualizationEditor.prototype, "_config", void 0);
+], NetworkVisualization.prototype, "_header", void 0);
 
-},{"@swc/helpers/_/_ts_decorate":"lX6TJ","lit":"4antt","lit/decorators/state":"5Z7m1","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"lX6TJ":[function(require,module,exports) {
+},{"@swc/helpers/_/_ts_decorate":"lX6TJ","lit":"4antt","./styles":"1nx7s","lit/decorators/state":"5Z7m1","d3":"17XFv","./view":"1ce4O","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"lX6TJ":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "_", ()=>(0, _tslib.__decorate));
@@ -1833,133 +1843,7 @@ parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "isServer", ()=>o);
 const o = !1;
 
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"5Z7m1":[function(require,module,exports) {
-var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
-parcelHelpers.defineInteropFlag(exports);
-var _stateJs = require("@lit/reactive-element/decorators/state.js");
-parcelHelpers.exportAll(_stateJs, exports);
-
-},{"@lit/reactive-element/decorators/state.js":"goyf7","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"goyf7":[function(require,module,exports) {
-var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
-parcelHelpers.defineInteropFlag(exports);
-parcelHelpers.export(exports, "state", ()=>t);
-var _propertyJs = require("./property.js");
-/**
- * @license
- * Copyright 2017 Google LLC
- * SPDX-License-Identifier: BSD-3-Clause
- */ function t(t) {
-    return (0, _propertyJs.property)({
-        ...t,
-        state: !0
-    });
-}
-
-},{"./property.js":"ipYYa","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"ipYYa":[function(require,module,exports) {
-/**
- * @license
- * Copyright 2017 Google LLC
- * SPDX-License-Identifier: BSD-3-Clause
- */ var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
-parcelHelpers.defineInteropFlag(exports);
-parcelHelpers.export(exports, "property", ()=>n);
-const i = (i, e)=>"method" === e.kind && e.descriptor && !("value" in e.descriptor) ? {
-        ...e,
-        finisher (n) {
-            n.createProperty(e.key, i);
-        }
-    } : {
-        kind: "field",
-        key: Symbol(),
-        placement: "own",
-        descriptor: {},
-        originalKey: e.key,
-        initializer () {
-            "function" == typeof e.initializer && (this[e.key] = e.initializer.call(this));
-        },
-        finisher (n) {
-            n.createProperty(e.key, i);
-        }
-    }, e = (i, e, n)=>{
-    e.constructor.createProperty(n, i);
-};
-function n(n) {
-    return (t, o)=>void 0 !== o ? e(n, t, o) : i(n, t);
-}
-
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"5dQCx":[function(require,module,exports) {
-var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
-parcelHelpers.defineInteropFlag(exports);
-parcelHelpers.export(exports, "NetworkVisualization", ()=>NetworkVisualization);
-var _tsDecorate = require("@swc/helpers/_/_ts_decorate");
-var _lit = require("lit");
-var _styles = require("./styles");
-var _state = require("lit/decorators/state");
-var _d3 = require("d3");
-var _graph = require("./graph");
-var _table = require("./table");
-class NetworkVisualization extends (0, _lit.LitElement) {
-    // Lifecycle interface
-    setConfig(config) {
-        this._header = config.header === "" ? (0, _lit.nothing) : config.header;
-        // Call set hass() to immediately adjust to a changed entity
-        // while editing the entity in the card editor
-        if (this._hass) this.hass = this._hass;
-    }
-    set hass(hass) {
-        this._hass = hass;
-    }
-    static #_ = (()=>{
-        // Declarative part
-        this.styles = (0, _styles.styles);
-    })();
-    // Card configuration using the Home Assistant Editor
-    static getConfigElement() {
-        return document.createElement("network-visualization-editor");
-    }
-    // Default configuration
-    static getStubConfig() {
-        return {
-            header: "My Network:"
-        };
-    }
-    render() {
-        const content = (0, _lit.html)`
-      <div class="card-container">
-        <div class="graph-container">
-          <svg id="graphSvg"></svg>
-        </div>
-        <div class="table-container">
-          <svg id="tableSvg"></svg>
-        </div>
-      </div>
-    `;
-        // Graph
-        const graphId = "graphSvg";
-        const graphSelector = `#${graphId}`;
-        // Table
-        const tableId = "tableSvg";
-        const tableSelector = `#${tableId}`;
-        setTimeout(()=>{
-            const graphSvg = _d3.select(this.renderRoot.querySelector(graphSelector));
-            (0, _graph.generateGraph)(this);
-            const tableSvg = _d3.select(this.renderRoot.querySelector(tableSelector));
-            (0, _table.generateTable)(this);
-        }, 0);
-        return (0, _lit.html)`
-      <div class="centered-container">
-        <ha-card header="${this._header}">
-          <div class="card-content">${content}</div>
-        </ha-card>
-      </div>
-    `;
-    }
-}
-(0, _tsDecorate._)([
-    (0, _state.state)()
-], NetworkVisualization.prototype, "_header", void 0);
-
-},{"@swc/helpers/_/_ts_decorate":"lX6TJ","lit":"4antt","./styles":"1nx7s","lit/decorators/state":"5Z7m1","d3":"17XFv","./graph":"gOo0s","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./table":"lXFYo"}],"1nx7s":[function(require,module,exports) {
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"1nx7s":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "styles", ()=>styles);
@@ -2016,9 +1900,67 @@ const styles = (0, _lit.css)`
     padding: 2px;
     user-select: text;
   }
+  .highlight {
+    background-color: white;
+    color: #333333;
+  }
 `;
 
-},{"lit":"4antt","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"17XFv":[function(require,module,exports) {
+},{"lit":"4antt","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"5Z7m1":[function(require,module,exports) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+var _stateJs = require("@lit/reactive-element/decorators/state.js");
+parcelHelpers.exportAll(_stateJs, exports);
+
+},{"@lit/reactive-element/decorators/state.js":"goyf7","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"goyf7":[function(require,module,exports) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "state", ()=>t);
+var _propertyJs = require("./property.js");
+/**
+ * @license
+ * Copyright 2017 Google LLC
+ * SPDX-License-Identifier: BSD-3-Clause
+ */ function t(t) {
+    return (0, _propertyJs.property)({
+        ...t,
+        state: !0
+    });
+}
+
+},{"./property.js":"ipYYa","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"ipYYa":[function(require,module,exports) {
+/**
+ * @license
+ * Copyright 2017 Google LLC
+ * SPDX-License-Identifier: BSD-3-Clause
+ */ var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+parcelHelpers.export(exports, "property", ()=>n);
+const i = (i, e)=>"method" === e.kind && e.descriptor && !("value" in e.descriptor) ? {
+        ...e,
+        finisher (n) {
+            n.createProperty(e.key, i);
+        }
+    } : {
+        kind: "field",
+        key: Symbol(),
+        placement: "own",
+        descriptor: {},
+        originalKey: e.key,
+        initializer () {
+            "function" == typeof e.initializer && (this[e.key] = e.initializer.call(this));
+        },
+        finisher (n) {
+            n.createProperty(e.key, i);
+        }
+    }, e = (i, e, n)=>{
+    e.constructor.createProperty(n, i);
+};
+function n(n) {
+    return (t, o)=>void 0 !== o ? e(n, t, o) : i(n, t);
+}
+
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"17XFv":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 var _d3Array = require("d3-array");
@@ -25384,32 +25326,17 @@ function nopropagation(event) {
     event.stopImmediatePropagation();
 }
 
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"gOo0s":[function(require,module,exports) {
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"1ce4O":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 // Initialize the d3.js visualization
-parcelHelpers.export(exports, "generateGraph", ()=>generateGraph);
+parcelHelpers.export(exports, "generateView", ()=>generateView);
 var _d3 = require("d3");
 var _router = require("./router");
 var _switch = require("./switch");
-function generateGraph(htmlSource) {
-    // Select the svg and add zooming
-    let svgSelector = "#graphSvg";
-    let svgElement = htmlSource.renderRoot.querySelector(svgSelector);
-    let svg = _d3.select(svgElement).attr("class", "bordered-svg").call(_d3.zoom().on("zoom", function(event) {
-        svg.attr("transform", event.transform);
-    })).on("dblclick.zoom", null).append("g");
-    // Define the dimensions of the card and the SVG element
-    let width = 500;
-    let height = 500;
-    svgElement.setAttribute("width", width.toString());
-    svgElement.setAttribute("height", height.toString());
-    // Select the table svg
-    let tableSelector = "#tableSvg";
-    let tableElement = htmlSource.renderRoot.querySelector(tableSelector);
-    let tableSvg = _d3.select(tableElement);
-    // Generate graph
-    let graphData = {
+function generateView(htmlSource) {
+    // Get the network data
+    let data = {
         nodes: [],
         links: [],
         tableRows: []
@@ -25418,7 +25345,7 @@ function generateGraph(htmlSource) {
     // Generate device nodes
     devices.forEach((device)=>{
         let [deviceHostname, deviceIp, deviceMac, deviceReachable, deviceHost] = device;
-        graphData.nodes.push({
+        data.nodes.push({
             host: deviceHost,
             name: deviceHostname,
             ip: deviceIp,
@@ -25427,47 +25354,90 @@ function generateGraph(htmlSource) {
             selected: false,
             isolated: false
         });
-        console.log("Device: " + device);
-        console.log("List: " + deviceHostname, deviceIp, deviceMac, deviceReachable, deviceHost);
-        graphData.links.push({
+        //console.log("Device: " + device);
+        //console.log("List: " + deviceHostname, deviceIp, deviceMac, deviceReachable, deviceHost);
+        data.links.push({
             source: deviceHost,
             target: deviceIp,
             marked: false
         });
     });
+    // Generate table
+    let tableSelector = "#tableSvg";
+    let tableSvgElement = htmlSource.renderRoot.querySelector(tableSelector);
+    let tableSvg = _d3.select(tableSvgElement).attr("class", "bordered-svg").append("g");
+    // Define the dimensions of the card and the SVG element
+    let tableWidth = 350;
+    let tableHeight = 500;
+    tableSvgElement.setAttribute("width", tableWidth.toString());
+    tableSvgElement.setAttribute("height", tableHeight.toString());
+    // Create the table structure
+    const tableData = data.nodes.map((node)=>[
+            node.name,
+            node.ip,
+            node.mac
+        ]);
+    const table = _d3.create("table");
+    const thead = table.append("thead");
+    const tbody = table.append("tbody");
+    // Add table headers
+    thead.append("tr").selectAll("th").data([
+        "Name",
+        "IP",
+        "MAC"
+    ]).enter().append("th").text((d)=>d);
+    // Add table rows
+    const rows = tbody.selectAll("tr").data(tableData).enter().append("tr").selectAll("td").data((d)=>d).enter().append("td").text((d)=>d);
+    // Add attributes as classes to the table rows
+    rows.each(function(d, index) {
+        const row = _d3.select(this);
+        if (index === 0) row.classed("name", true);
+        else if (index === 1) row.classed("ip", true);
+        else if (index === 2) row.classed("mac", true);
+    });
+    // Create the table container
+    const tableContainer = tableSvg.append("foreignObject").attr("x", 0).attr("y", 0).attr("width", 350).attr("height", tableHeight).append("xhtml:div").style("width", "100%").style("height", "100%").style("overflow", "auto").append("xhtml:body").style("margin", "5px").style("padding", "0px");
+    // Append the table to the table container
+    tableContainer.append(()=>table.node());
+    // Generate graph
+    let graphSelector = "#graphSvg";
+    let graphElement = htmlSource.renderRoot.querySelector(graphSelector);
+    let graphSvg = _d3.select(graphElement).attr("class", "bordered-svg").call(_d3.zoom().on("zoom", function(event) {
+        graphSvg.attr("transform", event.transform);
+    })).on("dblclick.zoom", null).append("g");
+    // Define the dimensions of the card and the SVG element
+    let graphWidth = 500;
+    let graphHeight = 500;
+    graphElement.setAttribute("width", graphWidth.toString());
+    graphElement.setAttribute("height", graphHeight.toString());
     // Update the SVG viewBox to fit the graph
-    let xExtent = _d3.extent(graphData.nodes, (d)=>d.x);
-    let yExtent = _d3.extent(graphData.nodes, (d)=>d.y);
+    let xExtent = _d3.extent(data.nodes, (d)=>d.x);
+    let yExtent = _d3.extent(data.nodes, (d)=>d.y);
     let newWidth = Math.abs(xExtent[0]) + xExtent[1];
     let newHeight = Math.abs(yExtent[0]) + yExtent[1];
-    svgElement.setAttribute("viewBox", `${xExtent[0]} ${yExtent[0]} ${newWidth} ${newHeight}`);
-    let links = svg.append("g").selectAll("line").data(graphData.links).enter().append("line").attr("source", (link)=>link.source).attr("target", (link)=>link.target).attr("stroke-width", 1).attr("marked", "false").style("stroke", "darkgray");
-    let nodes = svg.append("g").selectAll("circle").data(graphData.nodes).enter().append("circle").attr("r", 10).attr("fill", (node)=>node.reachable ? "#3BD16F" : "#F03A47").attr("name", (node)=>node.name).attr("ip", (node)=>node.ip).attr("mac", (node)=>node.mac).attr("host", (node)=>node.host).attr("reachable", (node)=>node.reachable).attr("selected", (node)=>node.selected).attr("isolated", (node)=>node.isolated).on("mouseover", handleMouseOver).on("mouseout", handleMouseOut).on("click", handleNodeClick);
-    _d3.select("ha_card").on("keydown", handleDelete);
-    svg.select("circle[ip='192.168.1.1']").attr("fill", "lightblue");
+    graphElement.setAttribute("viewBox", `${xExtent[0]} ${yExtent[0]} ${newWidth} ${newHeight}`);
+    // Fill graph with data
+    let links = graphSvg.append("g").selectAll("line").data(data.links).enter().append("line").attr("source", (link)=>link.source).attr("target", (link)=>link.target).attr("stroke-width", 1).attr("marked", "false").style("stroke", "darkgray");
+    let nodes = graphSvg.append("g").selectAll("circle").data(data.nodes).enter().append("circle").attr("id", (node, index)=>"node-" + index).attr("r", 10).attr("fill", (node)=>node.reachable ? "#3BD16F" : "#F03A47").attr("name", (node)=>node.name).attr("ip", (node)=>node.ip).attr("mac", (node)=>node.mac).attr("host", (node)=>node.host).attr("reachable", (node)=>node.reachable).attr("selected", (node)=>node.selected).attr("isolated", (node)=>node.isolated);
     // Add Events to nodes
+    nodes.on("mouseover", handleMouseOver).on("mouseout", handleMouseOut).on("click", handleNodeClick);
+    _d3.select("body").on("keydown", handleDelete);
+    graphSvg.select("circle[ip='192.168.1.1']").attr("fill", "lightblue");
     function handleMouseOver(event, d) {
         if (d.selected === true) return;
         _d3.select(this).transition().duration(200).attr("r", 15);
-        // Highlight the corresponding table row
-        tableSvg.selectAll("tbody tr").filter(function(data) {
-            return data.ip === d.ip;
-        }).style("background-color", "yellow");
     }
     function handleMouseOut(event, d) {
         if (d.selected === true) return;
         _d3.select(this).transition().duration(200).attr("r", 10);
-        // Remove the highlight from the corresponding table row
-        tableSvg.selectAll("tbody tr").filter(function(data) {
-            return data.ip === d.ip;
-        }).style("background-color", null);
     }
     function handleNodeClick(event, d) {
         let selectedIP = d.ip;
-        svg.selectAll("circle").filter(function(circle) {
+        graphSvg.selectAll("circle").filter(function(circle) {
             return circle.ip != d.ip;
         }).transition().duration(200).attr("r", 10).attr("selected", "false");
-        svg.selectAll("line").transition().duration(200).style("stroke", "darkgray").style("stroke-width", "1").attr("marked", "false");
+        graphSvg.selectAll("line").transition().duration(200).style("stroke", "darkgray").style("stroke-width", "1").attr("marked", "false");
+        tableSvg.selectAll("tr").classed("highlight", false);
         if (d.selected) {
             d.selected = false;
             _d3.select(this).transition().duration(200).attr("r", 10).attr("selected", "false");
@@ -25482,26 +25452,31 @@ function generateGraph(htmlSource) {
             // Mark node and links
             d.selected = true;
             _d3.select(this).transition().duration(200).attr("selected", "true").attr("r", 15);
-            svg.selectAll("line").filter(function(line) {
-                line.marked = linkedIPs.includes(line.target.ip) || line.target == selectedIP;
+            graphSvg.selectAll("line").filter(function(line) {
+                line.marked = linkedIPs.includes(line.target.ip) || line.target === selectedIP;
                 return line.marked;
             }).transition().duration(200).attr("marked", "true").style("stroke", "orange").style("stroke-width", "3");
+            // Highlight the table row
+            tableSvg.selectAll("tr").filter(function(event, table) {
+                let ipElement = this.querySelector("td.ip");
+                if (ipElement) return ipElement.textContent === selectedIP;
+                else return false;
+            }).classed("highlight", true);
         }
     }
     function handleDelete(event, node) {
-        if (event.key === "Delete") svg.selectAll("circle").filter(function(d) {
+        if (event.key === "Delete") graphSvg.selectAll("circle").filter(function(d) {
             // TODO: Execute only once
             return d.selected === true;
         }).transition().duration(200).attr("fill", "darkgrey").attr("isolated", "true");
-        else if (event.key === "Enter") svg.selectAll("circle").filter(function(d) {
+        else if (event.key === "Enter") graphSvg.selectAll("circle").filter(function(d) {
             return d.selected === true;
         }).transition().duration(200).attr("r", 15).attr("fill", (node)=>node.reachable ? "#3BD16F" : "#F03A47").attr("isolated", "true");
     }
-    // Add force-direction
-    let simulation = _d3.forceSimulation(graphData.nodes).force("charge", _d3.forceManyBody().strength(-200)).force("center", _d3.forceCenter(width / 2, height / 2)).force("link", _d3.forceLink(graphData.links).id((d)=>d.ip)).force("x", _d3.forceX().x((d)=>Math.max(0, Math.min(width, d.x))).strength(0.1)).force("y", _d3.forceY().y((d)=>Math.max(0, Math.min(height, d.y))).strength(0.1)).on("tick", ticked);
+    // Add physics  to the graph
+    let simulation = _d3.forceSimulation(data.nodes).force("charge", _d3.forceManyBody().strength(-200)).force("center", _d3.forceCenter(graphWidth / 2, graphHeight / 2)).force("link", _d3.forceLink(data.links).id((d)=>d.ip)).force("x", _d3.forceX().x((d)=>Math.max(0, Math.min(graphWidth, d.x))).strength(0.1)).force("y", _d3.forceY().y((d)=>Math.max(0, Math.min(graphHeight, d.y))).strength(0.1)).on("tick", ticked);
     let drag = _d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended);
     nodes.call(drag);
-    // Updating the position
     function ticked() {
         nodes.attr("cx", function(d) {
             return d.x;
@@ -25519,7 +25494,6 @@ function generateGraph(htmlSource) {
         });
     }
     function dragstarted(event, d) {
-        // Your alpha hit 0 it stops! make it run again
         simulation.alphaTarget(0.3).restart();
         d.fx = event.x;
         d.fy = event.y;
@@ -25529,21 +25503,20 @@ function generateGraph(htmlSource) {
         d.fy = event.y;
     }
     function dragended(event, d) {
-        // Alpha min is 0, head there
         simulation.alphaTarget(0);
         d.fx = null;
         d.fy = null;
     }
 }
 
-},{"d3":"17XFv","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./router":"4QFWt","./switch":"1ax4G"}],"4QFWt":[function(require,module,exports) {
+},{"d3":"17XFv","./router":"4QFWt","./switch":"1ax4G","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"4QFWt":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 // Communicate with the OpenWRT - Router unsing the defaults.
 parcelHelpers.export(exports, "getDevicesDynamic", ()=>getDevicesDynamic);
 // Retrieve devices from router
 parcelHelpers.export(exports, "getDevicesStatic", ()=>getDevicesStatic);
-var _devicesJson = require("./devices.json");
+var _devicesJson = require("./example/devices.json");
 var _devicesJsonDefault = parcelHelpers.interopDefault(_devicesJson);
 var Buffer = require("5c60bc5ef25de0a2").Buffer;
 function getDevicesDynamic() {
@@ -25596,7 +25569,7 @@ function getDevicesStatic() {
     return deviceList;
 }
 
-},{"5c60bc5ef25de0a2":"fCgem","be63ef2113e2be7b":"aDuCU","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./devices.json":"l72Ll"}],"fCgem":[function(require,module,exports) {
+},{"5c60bc5ef25de0a2":"fCgem","./example/devices.json":"apQ7d","be63ef2113e2be7b":"aDuCU","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"fCgem":[function(require,module,exports) {
 /*!
  * The buffer module from node.js, for the browser.
  *
@@ -27191,6 +27164,9 @@ exports.write = function(buffer, value, offset, isLE, mLen, nBytes) {
     for(; eLen > 0; buffer[offset + i] = e & 0xff, i += d, e /= 256, eLen -= 8);
     buffer[offset + i - d] |= s * 128;
 };
+
+},{}],"apQ7d":[function(require,module,exports) {
+module.exports = JSON.parse('[{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.1","hostname":"OpenWRT","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.2","hostname":"Switch_2","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.3","hostname":"Switch_3","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.4","hostname":"Switch_4","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.50","hostname":"Laptop","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.51","hostname":"Android Phone","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.52","hostname":"Drucker","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.53","hostname":"Home Assitant","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.60","hostname":"Lampe_0","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.61","hostname":"Lampe_1","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.62","hostname":"Lampe_2","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.63","hostname":"Lampe_3","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.64","hostname":"Lampe_4","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.65","hostname":"Lampe_5","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.70","hostname":"Sensor_0","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.71","hostname":"Sensor_1","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.72","hostname":"Sensor_2","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.73","hostname":"Sensor_3","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.74","hostname":"Sensor_4","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.75","hostname":"Sensor_5","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.101","hostname":"Isolated_0","host":"192.168.1.4"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.102","hostname":"Isolated_1","host":"192.168.1.4"}]');
 
 },{}],"aDuCU":[function(require,module,exports) {
 /**
@@ -48176,17 +48152,14 @@ module.exports = posix;
 }
 module.exports = globalThis.DOMException;
 
-},{"2233cbddec3cc84d":"h0xnd"}],"l72Ll":[function(require,module,exports) {
-module.exports = JSON.parse('[{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.1","hostname":"OpenWRT","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.2","hostname":"Switch_2","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.3","hostname":"Switch_3","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.4","hostname":"Switch_4","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.50","hostname":"Laptop","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.51","hostname":"Android Phone","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.52","hostname":"Drucker","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.53","hostname":"Home Assitant","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.60","hostname":"Lampe_0","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.61","hostname":"Lampe_1","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.62","hostname":"Lampe_2","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.63","hostname":"Lampe_3","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.64","hostname":"Lampe_4","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.65","hostname":"Lampe_5","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.70","hostname":"Sensor_0","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.71","hostname":"Sensor_1","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.72","hostname":"Sensor_2","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.73","hostname":"Sensor_3","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.74","hostname":"Sensor_4","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.75","hostname":"Sensor_5","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.101","hostname":"Isolated_0","host":"192.168.1.4"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.102","hostname":"Isolated_1","host":"192.168.1.4"}]');
-
-},{}],"1ax4G":[function(require,module,exports) {
+},{"2233cbddec3cc84d":"h0xnd"}],"1ax4G":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 // Communicating witch the OpenVSwitch using the defaults.
 parcelHelpers.export(exports, "getCommunicationDynamic", ()=>getCommunicationDynamic);
 // Retrieve devices from router
 parcelHelpers.export(exports, "getCommunicationStatic", ()=>getCommunicationStatic);
-var _communicationsJson = require("./communications.json");
+var _communicationsJson = require("./example/communications.json");
 var _communicationsJsonDefault = parcelHelpers.interopDefault(_communicationsJson);
 function getCommunicationDynamic() {
     // TODO: Implement retrieving ip from Home Assistant configuration
@@ -48215,77 +48188,65 @@ function getCommunicationStatic() {
     return communicationList;
 }
 
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./communications.json":"izFfp"}],"izFfp":[function(require,module,exports) {
-module.exports = JSON.parse('{"flow_table":[{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.89"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.85"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.90"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.20"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.89","ipv4_dst":"192.168.1.20"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.85","ipv4_dst":"192.168.1.67"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.90","ipv4_dst":"192.168.1.20"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.67","ipv4_dst":"192.168.1.89"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.90","ipv4_dst":"192.168.1.20"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.20","ipv4_dst":"192.168.1.67"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.90","ipv4_dst":"192.168.1.90"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.67","ipv4_dst":"192.168.1.89"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.85","ipv4_dst":"192.168.1.67"},"actions":["allow_packet"]}]}');
+},{"./example/communications.json":"hX0uw","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"hX0uw":[function(require,module,exports) {
+module.exports = JSON.parse('{"flow_table":[{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.2"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.3"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.4"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.50"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.51"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.52"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.53"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.60"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.61"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.62"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.63"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.64"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.65"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.70"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.71"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.72"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.73"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.74"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.75"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.101"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.102"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.2","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.3","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.4","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.50","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.51","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.52","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.53","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.60","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.61","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.62","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.63","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.64","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.65","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.70","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.71","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.72","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.73","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.74","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.75","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.101","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.101","ipv4_dst":"192.168.1.5"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.105","ipv4_dst":"192.168.1.5"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.102","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]}]}');
 
-},{}],"lXFYo":[function(require,module,exports) {
+},{}],"87WFb":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
-// Initialize the d3.js visualization
-parcelHelpers.export(exports, "generateTable", ()=>generateTable);
-var _d3 = require("d3");
-var _router = require("./router");
-function generateTable(htmlSource) {
-    // Select the svg and add zooming
-    let svgSelector = "#tableSvg";
-    let svgElement = htmlSource.renderRoot.querySelector(svgSelector);
-    let svg = _d3.select(svgElement).attr("class", "bordered-svg").append("g");
-    // Define the dimensions of the card and the SVG element
-    let width = 350;
-    let height = 500;
-    svgElement.setAttribute("width", width.toString());
-    svgElement.setAttribute("height", height.toString());
-    // Generate graph
-    let graphData = {
-        nodes: [],
-        links: []
-    };
-    let devices = (0, _router.getDevicesStatic)();
-    // Generate device nodes
-    devices.forEach((device)=>{
-        let [deviceHostname, deviceIp, deviceMac, deviceReachable, deviceHost] = device;
-        graphData.nodes.push({
-            host: deviceHost,
-            name: deviceHostname,
-            ip: deviceIp,
-            mac: deviceMac,
-            reachable: deviceReachable,
-            selected: false,
-            isolated: false
+parcelHelpers.export(exports, "NetworkVisualizationEditor", ()=>NetworkVisualizationEditor);
+var _tsDecorate = require("@swc/helpers/_/_ts_decorate");
+var _lit = require("lit");
+var _state = require("lit/decorators/state");
+class NetworkVisualizationEditor extends (0, _lit.LitElement) {
+    setConfig(config) {
+        this._config = config;
+    }
+    static #_ = (()=>{
+        this.styles = (0, _lit.css)`
+    .table {
+      display: table;
+    }
+    .row {
+      display: table-row;
+    }
+    .cell {
+      display: table-cell;
+      padding: 0.5em;
+    }
+  `;
+    })();
+    render() {
+        return (0, _lit.html)`
+            <form class="table">
+                <div class="row">
+                    <label class="label cell" for="header">Header:</label>
+                    <input
+                        @change="${this.handleChangedEvent}"
+                        class="value cell" id="header" value="${this._config.header}"></input>
+                </div>
+            </form>
+        `;
+    }
+    handleChangedEvent(changedEvent) {
+        const target = changedEvent.target;
+        // this._config is readonly, copy needed
+        const newConfig = Object.assign({}, this._config);
+        if (target.id == "header") newConfig.header = target.value;
+        const messageEvent = new CustomEvent("config-changed", {
+            detail: {
+                config: newConfig
+            },
+            bubbles: true,
+            composed: true
         });
-        console.log("Device: " + device);
-        console.log("List: " + deviceHostname, deviceIp, deviceMac, deviceReachable, deviceHost);
-        graphData.links.push({
-            source: deviceHost,
-            target: deviceIp,
-            marked: false
-        });
-    });
-    // Create the table structure
-    const tableData = graphData.nodes.map((node)=>[
-            node.name,
-            node.ip,
-            node.mac
-        ]);
-    const table = _d3.create("table");
-    const thead = table.append("thead");
-    const tbody = table.append("tbody");
-    // Add table headers
-    thead.append("tr").selectAll("th").data([
-        "Name",
-        "IP",
-        "MAC"
-    ]).enter().append("th").text((d)=>d);
-    // Add table rows
-    tbody.selectAll("tr").data(tableData).enter().append("tr").selectAll("td").data((d)=>d).enter().append("td").text((d)=>d);
-    // Todo make with dynamical
-    const tableWidth = table.node().getBoundingClientRect().width;
-    // Create the table container
-    const tableContainer = svg.append("foreignObject").attr("x", 0).attr("y", 0).attr("width", 350).attr("height", height).append("xhtml:div").style("width", "100%").style("height", "100%").style("overflow", "auto").append("xhtml:body").style("margin", "5px").style("padding", "0px");
-    // Append the table to the table container
-    tableContainer.append(()=>table.node());
+        this.dispatchEvent(messageEvent);
+    }
 }
+(0, _tsDecorate._)([
+    (0, _state.state)()
+], NetworkVisualizationEditor.prototype, "_config", void 0);
 
-},{"d3":"17XFv","./router":"4QFWt","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}]},["2oZg2","h7u1C"], "h7u1C", "parcelRequire94c2")
+},{"@swc/helpers/_/_ts_decorate":"lX6TJ","lit":"4antt","lit/decorators/state":"5Z7m1","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}]},["2oZg2","h7u1C"], "h7u1C", "parcelRequire94c2")
 
 //# sourceMappingURL=index.js.map

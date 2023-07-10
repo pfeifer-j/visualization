@@ -1,4 +1,4 @@
-import communicationData from "./communications.json";
+import communicationData from "./example/communications.json";
 
 // Communicating witch the OpenVSwitch using the defaults.
 export function getCommunicationDynamic() {

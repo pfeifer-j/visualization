@@ -1,4 +1,4 @@
-import deviceData from './devices.json';
+import deviceData from './example/devices.json';
 
 // Communicate with the OpenWRT - Router unsing the defaults.
 export function getDevicesDynamic() {
@@ -57,6 +57,5 @@ export function getDevicesStatic() {
         ];
         deviceList.push(deviceEntry);
     }
-
     return deviceList;
 }
