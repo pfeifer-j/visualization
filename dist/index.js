@@ -1890,17 +1890,14 @@ function n(n) {
 },{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"5dQCx":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
-/**
- * The NetworkVisualization gathers information from the OpenWRT
- * router and the OVS Switch to generate a force-directed graph
- * within Home Assistant representing all devices connected to the network.
- */ parcelHelpers.export(exports, "NetworkVisualization", ()=>NetworkVisualization);
+parcelHelpers.export(exports, "NetworkVisualization", ()=>NetworkVisualization);
 var _tsDecorate = require("@swc/helpers/_/_ts_decorate");
 var _lit = require("lit");
 var _styles = require("./styles");
 var _state = require("lit/decorators/state");
 var _d3 = require("d3");
 var _graph = require("./graph");
+var _table = require("./table");
 class NetworkVisualization extends (0, _lit.LitElement) {
     // Lifecycle interface
     setConfig(config) {
@@ -1927,17 +1924,34 @@ class NetworkVisualization extends (0, _lit.LitElement) {
         };
     }
     render() {
-        const content = (0, _lit.html)`<svg id="networkSvg"></svg>`;
-        const svgId = "networkSvg";
-        const svgSelector = `#${svgId}`;
+        const content = (0, _lit.html)`
+      <div class="card-container">
+        <div class="graph-container">
+          <svg id="graphSvg"></svg>
+        </div>
+        <div class="table-container">
+          <svg id="tableSvg"></svg>
+        </div>
+      </div>
+    `;
+        // Graph
+        const graphId = "graphSvg";
+        const graphSelector = `#${graphId}`;
+        // Table
+        const tableId = "tableSvg";
+        const tableSelector = `#${tableId}`;
         setTimeout(()=>{
-            const svg = _d3.select(this.renderRoot.querySelector(svgSelector));
+            const graphSvg = _d3.select(this.renderRoot.querySelector(graphSelector));
             (0, _graph.generateGraph)(this);
+            const tableSvg = _d3.select(this.renderRoot.querySelector(tableSelector));
+            (0, _table.generateTable)(this);
         }, 0);
         return (0, _lit.html)`
-      <ha-card header="${this._header}">
-        <div class="card-content">${content}</div>
-      </ha-card>
+      <div class="centered-container">
+        <ha-card header="${this._header}">
+          <div class="card-content">${content}</div>
+        </ha-card>
+      </div>
     `;
     }
 }
@@ -1945,26 +1959,62 @@ class NetworkVisualization extends (0, _lit.LitElement) {
     (0, _state.state)()
 ], NetworkVisualization.prototype, "_header", void 0);
 
-},{"@swc/helpers/_/_ts_decorate":"lX6TJ","lit":"4antt","./styles":"1nx7s","lit/decorators/state":"5Z7m1","d3":"17XFv","./graph":"gOo0s","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"1nx7s":[function(require,module,exports) {
+},{"@swc/helpers/_/_ts_decorate":"lX6TJ","lit":"4antt","./styles":"1nx7s","lit/decorators/state":"5Z7m1","d3":"17XFv","./graph":"gOo0s","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./table":"lXFYo"}],"1nx7s":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "styles", ()=>styles);
 var _lit = require("lit");
 const styles = (0, _lit.css)`
-  .tooltip {
-    position: relative;
-    display: inline-block;
-    border-bottom: 1px dotted black; /* If you want dots under the hoverable text */
+  ha-card {
+    width: fit-content;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
   }
   .card-content {
-    overflow: visible;
+    flex: 1;
+    display: flex;
+    width: 800px;
+    overflow: hidden;
+  }
+  .centered-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
     height: 100%;
   }
-  .graph-container {
+  .card-container {
+    display: flex;
+    flex-wrap: nowrap;
+  }
+  .graph-container,
+  justify-content: left;
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  user-select: text;
+  }
+  .table-container {
+    justify-content: r;
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    user-select: text;
+  }
+  #graphSvg {
     width: 100%;
-    height: 100%;
-    overflow: visible;
-    position: relative;
+    height: 500px;
+    box-sizing: border-box;
+    padding: 2px;
+    user-select: text;
+  }
+  #tableSvg {
+    width: 100%;
+    height: 500px;
+    box-sizing: border-box;
+    border: 2px solid darkgray;
+    padding: 2px;
+    user-select: text;
   }
 `;
 
@@ -25344,22 +25394,25 @@ var _router = require("./router");
 var _switch = require("./switch");
 function generateGraph(htmlSource) {
     // Select the svg and add zooming
-    let svgSelector = "#networkSvg";
+    let svgSelector = "#graphSvg";
     let svgElement = htmlSource.renderRoot.querySelector(svgSelector);
-    let svg = _d3.select(svgElement).call(_d3.zoom().on("zoom", function(event) {
+    let svg = _d3.select(svgElement).attr("class", "bordered-svg").call(_d3.zoom().on("zoom", function(event) {
         svg.attr("transform", event.transform);
     })).on("dblclick.zoom", null).append("g");
     // Define the dimensions of the card and the SVG element
     let width = 500;
     let height = 500;
-    let padding = 50;
-    svgElement.setAttribute("width", (width - padding).toString());
-    svgElement.setAttribute("height", (height - padding).toString());
-    svgElement.parentElement?.setAttribute("style", `width: ${width}px; height: ${height}px; overflow: visible;`);
+    svgElement.setAttribute("width", width.toString());
+    svgElement.setAttribute("height", height.toString());
+    // Select the table svg
+    let tableSelector = "#tableSvg";
+    let tableElement = htmlSource.renderRoot.querySelector(tableSelector);
+    let tableSvg = _d3.select(tableElement);
     // Generate graph
     let graphData = {
         nodes: [],
-        links: []
+        links: [],
+        tableRows: []
     };
     let devices = (0, _router.getDevicesStatic)();
     // Generate device nodes
@@ -25382,32 +25435,32 @@ function generateGraph(htmlSource) {
             marked: false
         });
     });
+    // Update the SVG viewBox to fit the graph
+    let xExtent = _d3.extent(graphData.nodes, (d)=>d.x);
+    let yExtent = _d3.extent(graphData.nodes, (d)=>d.y);
+    let newWidth = Math.abs(xExtent[0]) + xExtent[1];
+    let newHeight = Math.abs(yExtent[0]) + yExtent[1];
+    svgElement.setAttribute("viewBox", `${xExtent[0]} ${yExtent[0]} ${newWidth} ${newHeight}`);
     let links = svg.append("g").selectAll("line").data(graphData.links).enter().append("line").attr("source", (link)=>link.source).attr("target", (link)=>link.target).attr("stroke-width", 1).attr("marked", "false").style("stroke", "darkgray");
     let nodes = svg.append("g").selectAll("circle").data(graphData.nodes).enter().append("circle").attr("r", 10).attr("fill", (node)=>node.reachable ? "#3BD16F" : "#F03A47").attr("name", (node)=>node.name).attr("ip", (node)=>node.ip).attr("mac", (node)=>node.mac).attr("host", (node)=>node.host).attr("reachable", (node)=>node.reachable).attr("selected", (node)=>node.selected).attr("isolated", (node)=>node.isolated).on("mouseover", handleMouseOver).on("mouseout", handleMouseOut).on("click", handleNodeClick);
-    _d3.select("body").on("keydown", handleDelete);
-    //TODO:  Implement tooltip. Check why append(body) doesnt work
-    let tooltip = svg.append("g").attr("class", "tooltip").style("opacity", 0);
+    _d3.select("ha_card").on("keydown", handleDelete);
     svg.select("circle[ip='192.168.1.1']").attr("fill", "lightblue");
     // Add Events to nodes
     function handleMouseOver(event, d) {
         if (d.selected === true) return;
         _d3.select(this).transition().duration(200).attr("r", 15);
-        let content = "IP: " + d.ip + " Name: " + d.name + " MAC: " + d.mac;
-        let tooltipElement = document.querySelector(".tooltip");
-        let tooltip = _d3.select(tooltipElement);
-        if (tooltip) {
-            tooltip.transition().duration(100).style("opacity", 1);
-            // Add content to the tooltip
-            tooltip.html(content);
-            tooltip.style("left", event.pageX + 10 + "px");
-            tooltip.style("top", event.pageY - 15 + "px");
-        }
+        // Highlight the corresponding table row
+        tableSvg.selectAll("tbody tr").filter(function(data) {
+            return data.ip === d.ip;
+        }).style("background-color", "yellow");
     }
     function handleMouseOut(event, d) {
         if (d.selected === true) return;
         _d3.select(this).transition().duration(200).attr("r", 10);
-        //let tooltip = this.renderRoot.querySelector(".tooltip");
-        if (tooltip) tooltip.transition().duration(200).style("opacity", 0);
+        // Remove the highlight from the corresponding table row
+        tableSvg.selectAll("tbody tr").filter(function(data) {
+            return data.ip === d.ip;
+        }).style("background-color", null);
     }
     function handleNodeClick(event, d) {
         let selectedIP = d.ip;
@@ -25445,7 +25498,7 @@ function generateGraph(htmlSource) {
         }).transition().duration(200).attr("r", 15).attr("fill", (node)=>node.reachable ? "#3BD16F" : "#F03A47").attr("isolated", "true");
     }
     // Add force-direction
-    let simulation = _d3.forceSimulation(graphData.nodes).force("charge", _d3.forceManyBody().strength(-200)).force("center", _d3.forceCenter(width / 2, height / 2)).force("link", _d3.forceLink(graphData.links).id((d)=>d.ip)).on("tick", ticked);
+    let simulation = _d3.forceSimulation(graphData.nodes).force("charge", _d3.forceManyBody().strength(-200)).force("center", _d3.forceCenter(width / 2, height / 2)).force("link", _d3.forceLink(graphData.links).id((d)=>d.ip)).force("x", _d3.forceX().x((d)=>Math.max(0, Math.min(width, d.x))).strength(0.1)).force("y", _d3.forceY().y((d)=>Math.max(0, Math.min(height, d.y))).strength(0.1)).on("tick", ticked);
     let drag = _d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended);
     nodes.call(drag);
     // Updating the position
@@ -48165,6 +48218,74 @@ function getCommunicationStatic() {
 },{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./communications.json":"izFfp"}],"izFfp":[function(require,module,exports) {
 module.exports = JSON.parse('{"flow_table":[{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.89"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.85"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.90"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.20"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.89","ipv4_dst":"192.168.1.20"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.85","ipv4_dst":"192.168.1.67"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.90","ipv4_dst":"192.168.1.20"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.67","ipv4_dst":"192.168.1.89"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.90","ipv4_dst":"192.168.1.20"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.20","ipv4_dst":"192.168.1.67"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.90","ipv4_dst":"192.168.1.90"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.67","ipv4_dst":"192.168.1.89"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.85","ipv4_dst":"192.168.1.67"},"actions":["allow_packet"]}]}');
 
-},{}]},["2oZg2","h7u1C"], "h7u1C", "parcelRequire94c2")
+},{}],"lXFYo":[function(require,module,exports) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+// Initialize the d3.js visualization
+parcelHelpers.export(exports, "generateTable", ()=>generateTable);
+var _d3 = require("d3");
+var _router = require("./router");
+function generateTable(htmlSource) {
+    // Select the svg and add zooming
+    let svgSelector = "#tableSvg";
+    let svgElement = htmlSource.renderRoot.querySelector(svgSelector);
+    let svg = _d3.select(svgElement).attr("class", "bordered-svg").append("g");
+    // Define the dimensions of the card and the SVG element
+    let width = 350;
+    let height = 500;
+    svgElement.setAttribute("width", width.toString());
+    svgElement.setAttribute("height", height.toString());
+    // Generate graph
+    let graphData = {
+        nodes: [],
+        links: []
+    };
+    let devices = (0, _router.getDevicesStatic)();
+    // Generate device nodes
+    devices.forEach((device)=>{
+        let [deviceHostname, deviceIp, deviceMac, deviceReachable, deviceHost] = device;
+        graphData.nodes.push({
+            host: deviceHost,
+            name: deviceHostname,
+            ip: deviceIp,
+            mac: deviceMac,
+            reachable: deviceReachable,
+            selected: false,
+            isolated: false
+        });
+        console.log("Device: " + device);
+        console.log("List: " + deviceHostname, deviceIp, deviceMac, deviceReachable, deviceHost);
+        graphData.links.push({
+            source: deviceHost,
+            target: deviceIp,
+            marked: false
+        });
+    });
+    // Create the table structure
+    const tableData = graphData.nodes.map((node)=>[
+            node.name,
+            node.ip,
+            node.mac
+        ]);
+    const table = _d3.create("table");
+    const thead = table.append("thead");
+    const tbody = table.append("tbody");
+    // Add table headers
+    thead.append("tr").selectAll("th").data([
+        "Name",
+        "IP",
+        "MAC"
+    ]).enter().append("th").text((d)=>d);
+    // Add table rows
+    tbody.selectAll("tr").data(tableData).enter().append("tr").selectAll("td").data((d)=>d).enter().append("td").text((d)=>d);
+    // Todo make with dynamical
+    const tableWidth = table.node().getBoundingClientRect().width;
+    // Create the table container
+    const tableContainer = svg.append("foreignObject").attr("x", 0).attr("y", 0).attr("width", 350).attr("height", height).append("xhtml:div").style("width", "100%").style("height", "100%").style("overflow", "auto").append("xhtml:body").style("margin", "5px").style("padding", "0px");
+    // Append the table to the table container
+    tableContainer.append(()=>table.node());
+}
+
+},{"d3":"17XFv","./router":"4QFWt","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}]},["2oZg2","h7u1C"], "h7u1C", "parcelRequire94c2")
 
 //# sourceMappingURL=index.js.map

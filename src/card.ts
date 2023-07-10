@@ -3,6 +3,7 @@ import { styles } from "./styles";
 import { state } from "lit/decorators/state";
 import * as d3 from "d3";
 import { generateGraph } from './graph';
+import { generateTable } from './table';
 
 import { HomeAssistant, LovelaceCardConfig } from "custom-card-helpers";
 
@@ -11,13 +12,7 @@ interface Config extends LovelaceCardConfig {
   entity: string;
 }
 
-/**
- * The NetworkVisualization gathers information from the OpenWRT
- * router and the OVS Switch to generate a force-directed graph
- * within Home Assistant representing all devices connected to the network.
- */
 export class NetworkVisualization extends LitElement {
-
   // The internal reactive states
   @state() private _header: string | typeof nothing;
 
@@ -55,20 +50,39 @@ export class NetworkVisualization extends LitElement {
   }
 
   public render(): TemplateResult {
-    const content: TemplateResult = html`<svg id="networkSvg"></svg>`;
+    const content: TemplateResult = html`
+      <div class="card-container">
+        <div class="graph-container">
+          <svg id="graphSvg"></svg>
+        </div>
+        <div class="table-container">
+          <svg id="tableSvg"></svg>
+        </div>
+      </div>
+    `;
 
-    const svgId = 'networkSvg';
-    const svgSelector = `#${svgId}`;
+    // Graph
+    const graphId = 'graphSvg';
+    const graphSelector = `#${graphId}`;
+
+    // Table
+    const tableId = 'tableSvg';
+    const tableSelector = `#${tableId}`;
 
     setTimeout(() => {
-      const svg = d3.select(this.renderRoot.querySelector(svgSelector));
+      const graphSvg = d3.select(this.renderRoot.querySelector(graphSelector));
       generateGraph(this);
+
+      const tableSvg = d3.select(this.renderRoot.querySelector(tableSelector));
+      generateTable(this);
     }, 0);
 
     return html`
-      <ha-card header="${this._header}">
-        <div class="card-content">${content}</div>
-      </ha-card>
+      <div class="centered-container">
+        <ha-card header="${this._header}">
+          <div class="card-content">${content}</div>
+        </ha-card>
+      </div>
     `;
   }
 }
