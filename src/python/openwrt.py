@@ -26,7 +26,7 @@ def get_devices():
         device_dict = device._asdict()
         device_list.append(device_dict)
 
-    return jsonify(device_list)
+    print(jsonify(device_list))
 
 
 if __name__ == "__main__":

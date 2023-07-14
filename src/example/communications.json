@@ -378,11 +378,49 @@
         "allow_packet"
       ]
     },
-
     {
       "match": {
         "ipv4_src": "192.168.1.105",
         "ipv4_dst": "192.168.1.5"
+      },
+      "actions": [
+        "allow_packet"
+      ]
+    },
+    {
+      "match": {
+        "ipv4_src": "192.168.1.64",
+        "ipv4_dst": "192.168.1.2"
+      },
+      "actions": [
+        "allow_packet"
+      ]
+    },
+
+    {
+      "match": {
+        "ipv4_src": "192.168.1.64",
+        "ipv4_dst": "192.168.1.1"
+      },
+      "actions": [
+        "allow_packet"
+      ]
+    },
+
+    {
+      "match": {
+        "ipv4_src": "192.168.1.2",
+        "ipv4_dst": "192.168.1.64"
+      },
+      "actions": [
+        "allow_packet"
+      ]
+    },
+
+    {
+      "match": {
+        "ipv4_src": "192.168.1.1",
+        "ipv4_dst": "192.168.1.64"
       },
       "actions": [
         "allow_packet"

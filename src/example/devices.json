@@ -2,7 +2,7 @@
   {
     "dev": "br0",
     "stale": true,
-    "mac": "12:34:56:78:10:12",
+    "mac": "1a:2b:3c:4d:5e:6f",
     "noarp": false,
     "permanent": false,
     "failed": false,
@@ -20,7 +20,7 @@
   {
     "dev": "br0",
     "stale": true,
-    "mac": "12:34:56:78:10:12",
+    "mac": "3e:8b:9e:ad:be:cf",
     "noarp": false,
     "permanent": false,
     "failed": false,
@@ -38,7 +38,7 @@
   {
     "dev": "br0",
     "stale": true,
-    "mac": "12:34:56:78:10:12",
+    "mac": "da:eb:fc:1d:2e:3f",
     "noarp": false,
     "permanent": false,
     "failed": false,
@@ -56,7 +56,7 @@
   {
     "dev": "br0",
     "stale": true,
-    "mac": "12:34:56:78:10:12",
+    "mac": "4a:5b:6c:7d:8e:9f",
     "noarp": false,
     "permanent": false,
     "failed": false,
@@ -74,7 +74,7 @@
   {
     "dev": "br0",
     "stale": true,
-    "mac": "12:34:56:78:10:12",
+    "mac": "af:be:ca:fe:b0:0b",
     "noarp": false,
     "permanent": false,
     "failed": false,
@@ -92,7 +92,7 @@
   {
     "dev": "br0",
     "stale": true,
-    "mac": "12:34:56:78:10:12",
+    "mac": "1f:2e:3d:4c:5b:6a",
     "noarp": false,
     "permanent": false,
     "failed": false,
@@ -110,7 +110,7 @@
   {
     "dev": "br0",
     "stale": true,
-    "mac": "12:34:56:78:10:12",
+    "mac": "cc:dd:ee:ff:aa:bb",
     "noarp": false,
     "permanent": false,
     "failed": false,
@@ -128,7 +128,7 @@
   {
     "dev": "br0",
     "stale": true,
-    "mac": "12:34:56:78:10:12",
+    "mac": "1b:2c:3d:4e:5f:6a",
     "noarp": false,
     "permanent": false,
     "failed": false,
@@ -140,13 +140,13 @@
     "delay": false,
     "incomplete": false,
     "ip": "192.168.1.53",
-    "hostname": "Home Assitant",
+    "hostname": "Home Assistant",
     "host": "192.168.1.1"
   },
   {
     "dev": "br0",
     "stale": true,
-    "mac": "12:34:56:78:10:12",
+    "mac": "ab:cd:ef:12:34:56",
     "noarp": false,
     "permanent": false,
     "failed": false,
@@ -164,7 +164,7 @@
   {
     "dev": "br0",
     "stale": true,
-    "mac": "12:34:56:78:10:12",
+    "mac": "12:34:56:ab:cd:ef",
     "noarp": false,
     "permanent": false,
     "failed": false,
@@ -182,7 +182,7 @@
   {
     "dev": "br0",
     "stale": true,
-    "mac": "12:34:56:78:10:12",
+    "mac": "ab:cd:ef:12:34:56",
     "noarp": false,
     "permanent": false,
     "failed": false,
@@ -200,7 +200,7 @@
   {
     "dev": "br0",
     "stale": true,
-    "mac": "12:34:56:78:10:12",
+    "mac": "1a:2b:3c:4d:5e:6f",
     "noarp": false,
     "permanent": false,
     "failed": false,
@@ -218,7 +218,7 @@
   {
     "dev": "br0",
     "stale": true,
-    "mac": "12:34:56:78:10:12",
+    "mac": "7a:8b:9c:ad:be:cf",
     "noarp": false,
     "permanent": false,
     "failed": false,
@@ -236,7 +236,7 @@
   {
     "dev": "br0",
     "stale": true,
-    "mac": "12:34:56:78:10:12",
+    "mac": "da:eb:fc:1d:2e:3f",
     "noarp": false,
     "permanent": false,
     "failed": false,
@@ -254,7 +254,7 @@
   {
     "dev": "br0",
     "stale": true,
-    "mac": "12:34:56:78:10:12",
+    "mac": "4a:5b:6c:7d:8e:9f",
     "noarp": false,
     "permanent": false,
     "failed": false,
@@ -272,7 +272,7 @@
   {
     "dev": "br0",
     "stale": true,
-    "mac": "12:34:56:78:10:12",
+    "mac": "af:be:ca:fe:b0:0b",
     "noarp": false,
     "permanent": false,
     "failed": false,
@@ -290,7 +290,7 @@
   {
     "dev": "br0",
     "stale": true,
-    "mac": "12:34:56:78:10:12",
+    "mac": "1f:2e:3d:4c:5b:6a",
     "noarp": false,
     "permanent": false,
     "failed": false,

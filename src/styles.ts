@@ -52,8 +52,4 @@ export const styles = css`
     padding: 2px;
     user-select: text;
   }
-  .highlight {
-    background-color: white;
-    color: #333333;
-  }
 `;
