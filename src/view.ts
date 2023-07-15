@@ -5,18 +5,18 @@ import { getCommunicationStatic as getCommunicationsStatic } from "./switch";
 import { getCommunicationDynamic as getCommunicationsDynamic } from "./switch";
 
 // Visualisation constants
+const graphWidth = 500;
+const graphHeight = 500;
+const tableWidth = 350;
+const tableHeight = 500;
 const selectedRadius = 15;
 const unselectedRadius = 10;
 const nodeReachableColor = "#3BD16F";
 const nodeUnreachableColor = "#F03A47"
 const openWrtIP = "192.168.1.1"
 const openWrtColor = "lightblue";
+const graphForce = -300;
 const duration = 200;
-const graphForce = -200;
-const graphWidth = 500;
-const graphHeight = 500;
-const tableWidth = 350;
-const tableHeight = 500;
 
 // Initialize the d3.js visualization
 export function generateView(htmlSource) {
@@ -87,7 +87,6 @@ export function generateView(htmlSource) {
         .data(data.nodes)
         .enter()
         .append("circle")
-        .attr("id", (node, index) => "node-" + index)
         .attr("r", unselectedRadius)
         .attr("fill", (node) => (node.reachable ? nodeReachableColor : nodeUnreachableColor))
         .attr("name", (node) => node.name)
@@ -98,184 +97,8 @@ export function generateView(htmlSource) {
         .attr("selected", false)
         .attr("isolated", false);
 
-    // Color source node
+    // Mark source node
     graphSvg.select("circle[ip='" + openWrtIP + "']").attr("fill", openWrtColor);
-
-    // Add Events to nodes and blank space
-    nodes.on("mouseover", handleGraphMouseOver)
-        .on("mouseout", handleGraphMouseOut)
-        .on("click", handleGraphClick);
-
-    d3.select("body").on("keydown", handleKeyPress);
-
-    function handleGraphMouseOver(event, node) {
-        if (node.selected === true) {
-            return;
-        }
-
-        d3.select(this)
-            .transition()
-            .duration(duration)
-            .attr("r", selectedRadius);
-
-        // Highlight the table row
-        tableSvg
-            .selectAll("tr")
-            .filter(function () {
-                return this.querySelector('td.ip') ? this.querySelector('td.ip').textContent === node.ip : false;
-            })
-            .transition()
-            .duration(duration)
-            .style("background-color", "white")
-            .style("color", "black");
-    }
-
-    function handleGraphMouseOut(event, node) {
-        if (node.selected === true) {
-            return;
-        }
-
-        d3.select(this)
-            .transition()
-            .duration(duration)
-            .attr("r", unselectedRadius);
-
-        tableSvg.selectAll("tr")
-            .filter(function () {
-                return this.querySelector('td.ip') ? this.querySelector('td.ip').textContent === node.ip : false;
-            })
-            .transition()
-            .duration(duration)
-            .style("background-color", "transparent")
-            .style("color", "white");
-    }
-
-    function handleGraphClick(event, node) {
-        let selectedIP = node.ip;
-        let wasSelected = node.selected;
-        clearSelection();
-
-        if (wasSelected) {
-            d3.select(this)
-                .transition()
-                .duration(duration)
-                .attr("r", unselectedRadius)
-                .attr("selected", "false");
-
-        } else {
-            node.selected = true;
-
-            d3.select(this)
-                .transition()
-                .duration(duration)
-                .attr("selected", "true")
-                .attr("r", selectedRadius);
-
-            highlightLinks(this, selectedIP);
-
-            tableSvg
-                .selectAll("tr")
-                .filter(function () {
-                    let ipElement = this.querySelector('td.ip');
-                    if (ipElement) {
-                        return ipElement.textContent === selectedIP;
-                    } else {
-                        return false;
-                    }
-                })
-                .transition()
-                .duration(duration)
-                .style("background-color", "white")
-                .style("color", "black")
-                .attr("selected", "true");
-        }
-    }
-
-    function handleKeyPress(event) {
-        switch (event.key) {
-            case "Escape":
-                clearSelection();
-                break;
-            case "Delete":
-                graphSvg.selectAll("circle")
-                    .filter(function (d) {
-                        // TODO: Execute only once
-                        return (d.selected === true);
-                    })
-                    .transition()
-                    .duration(duration)
-                    .attr("fill", "darkgrey")
-                    .attr("isolated", "true");
-                break;
-            case "Enter":
-                graphSvg.selectAll("circle")
-                    .filter(function (d) {
-                        return (d.selected === true);
-                    })
-                    .transition()
-                    .duration(duration)
-                    .attr("r", selectedRadius)
-                    .attr("fill", (node) => (node.reachable ? "#3BD16F" : "#F03A47"))
-                    .attr("isolated", "true");
-                break;
-        }
-    }
-
-    function clearSelection() {
-        graphSvg
-            .selectAll("circle")
-            .transition()
-            .duration(duration)
-            .attr("r", unselectedRadius)
-            .attr("selected", "false");
-
-        data.nodes.forEach(node => {
-            node.selected = false;
-        });
-
-        graphSvg
-            .selectAll("line")
-            .transition()
-            .duration(duration)
-            .style("stroke", "darkgray")
-            .style("stroke-width", "1")
-            .attr("marked", "false");
-
-        tableSvg
-            .selectAll("tr")
-            .transition()
-            .duration(duration)
-            .style("background-color", "transparent")
-            .style("color", "white");
-    }
-
-
-    function highlightLinks(element, selectedIP) {
-        // Get communications
-        let linkedIPs = [];
-        let communications = getCommunicationsStatic();
-
-        communications.forEach(function (communication) {
-            if (communication[0] === element.ip) {
-                linkedIPs.push(communication[1]);
-            } else if (communication[1] === element.ip) {
-                linkedIPs.push(communication[0]);
-            }
-        });
-
-        graphSvg
-            .selectAll("line")
-            .filter(function (line) {
-                line.marked =
-                    linkedIPs.includes(line.target.ip) || line.target === selectedIP || linkedIPs.includes(selectedIP);
-                return line.marked;
-            })
-            .transition()
-            .duration(200)
-            .attr("marked", "true")
-            .style("stroke", "orange")
-            .style("stroke-width", "3");
-    }
 
     // Add physics to the graph
     let simulation = d3
@@ -379,102 +202,6 @@ export function generateView(htmlSource) {
         }
     });
 
-    // Add events to table
-    tbody
-        .selectAll("tr")
-        .on("mouseover", handleTableMouseOver)
-        .on("mouseout", handleTableMouseOut)
-        .on("click", handleTableClick);
-
-    function handleTableMouseOver(event, row) {
-        let selectedNode = graphSvg
-            .selectAll("circle")
-            .filter(function () {
-                return this.getAttribute("ip") === row[1];
-            })
-            .node()
-
-        if (selectedNode.getAttribute("selected") === true) {
-            return;
-        }
-
-        d3.select(this)
-            .style("background-color", "white")
-            .style("color", "black");
-
-        graphSvg
-            .selectAll("circle")
-            .filter(function () {
-                return this.getAttribute("ip") === row[1];
-            })
-            .transition()
-            .duration(duration)
-            .attr("r", selectedRadius);
-    }
-
-    function handleTableMouseOut(event, row) {
-        let selectedNode = graphSvg
-            .selectAll("circle")
-            .filter(function () {
-                return this.getAttribute("ip") === row[1];
-            })
-            .node()
-
-        if (selectedNode.getAttribute("selected") === true) {
-            return;
-        }
-
-
-        d3.select(this)
-            .style("background-color", "transparent")
-            .style("color", "white");
-
-        graphSvg
-            .selectAll("circle")
-            .filter(function () {
-                return this.getAttribute("ip") === row[1];
-            })
-            .transition()
-            .duration(duration)
-            .attr("r", unselectedRadius);
-    }
-
-    function handleTableClick(event, row) {
-        let selectedIP = row[1];
-        let selectedNode = graphSvg
-            .selectAll("circle")
-            .filter(function () {
-                return this.getAttribute("ip") === selectedIP;
-            })
-            .node()
-
-        let wasSelected = selectedNode.getAttribute("selected");
-
-        //clearSelection();
-
-        if (wasSelected == true) {
-
-            d3.select(this.parentNode).attr("selected", false)
-
-            d3.select(this)
-                .transition()
-                .duration(duration)
-                .attr("r", unselectedRadius)
-                .attr("selected", "false");
-
-        } else {
-            d3.select(this.parentNode).attr("selected", true)
-
-            d3.select(selectedNode)
-                .transition()
-                .duration(duration)
-                .attr("r", unselectedRadius)
-                .attr("selected", "true");
-
-            highlightLinks(this, selectedIP);
-        }
-    }
-
     // Create the table container
     const tableContainer = tableSvg
         .append("foreignObject")
@@ -490,6 +217,245 @@ export function generateView(htmlSource) {
         .style("margin", "5px")
         .style("padding", "0px");
 
-    // Append the table to the table container
     tableContainer.append(() => table.node());
+
+    // Add events to nodes, blank space, and table rows
+    nodes
+        .on("mouseover", handleMouseOver)
+        .on("mouseout", handleMouseOut)
+        .on("click", handleClick);
+
+    d3
+        .select("body")
+        .on("keydown", handleKeyPress);
+
+    tbody
+        .selectAll("tr")
+        .on("mouseover", handleMouseOver)
+        .on("mouseout", handleMouseOut)
+        .on("click", handleClick);
+
+    function handleMouseOver(event, element) {
+        let selectedIP = getIP(element);
+
+        // Get the node
+        let selectedNode = graphSvg
+            .selectAll("circle")
+            .filter(function () {
+                return this.getAttribute("ip") === selectedIP;
+            })
+            .node();
+
+        // Get the row
+        let selectedRow = tableSvg
+            .selectAll("tr")
+            .filter(function () {
+                return this.querySelector('td.ip') ? this.querySelector('td.ip').textContent === selectedIP : false;
+            })
+            .node();
+
+        // Highlight node and row
+        if (selectedNode.getAttribute("selected") === "false") {
+            d3.select(selectedRow)
+                .style("background-color", "white")
+                .style("color", "black");
+
+            d3.select(selectedNode)
+                .transition()
+                .duration(duration)
+                .attr("r", selectedRadius);
+        }
+    }
+
+    function handleMouseOut(event, element) {
+        let selectedIP = getIP(element);
+
+        // Get the node
+        let selectedNode = graphSvg
+            .selectAll("circle")
+            .filter(function () {
+                return this.getAttribute("ip") === selectedIP;
+            })
+            .node();
+
+        // Get the row
+        let selectedRow = tableSvg
+            .selectAll("tr")
+            .filter(function () {
+                return this.querySelector('td.ip') ? this.querySelector('td.ip').textContent === selectedIP : false;
+            })
+            .node();
+
+        // Remove highlighting
+        if (selectedNode.getAttribute("selected") === "false") {
+            d3.select(selectedNode)
+                .transition()
+                .duration(duration)
+                .attr("r", unselectedRadius);
+
+            d3.select(selectedRow)
+                .style("background-color", "transparent")
+                .style("color", "white");
+        }
+    }
+
+    function handleClick(event, element) {
+        let selectedIP = getIP(element);
+
+        // Get the node
+        let selectedNode = graphSvg
+            .selectAll("circle")
+            .filter(function () {
+                return this.getAttribute("ip") === selectedIP;
+            })
+            .node();
+
+        // Get the row
+        let selectedRow = tableSvg
+            .selectAll("tr")
+            .filter(function () {
+                return this.querySelector('td.ip') ? this.querySelector('td.ip').textContent === selectedIP : false;
+            })
+            .node();
+
+        let wasSelected = selectedNode.getAttribute("selected") === "true";
+        clearSelection();
+
+        // Update selection
+        if (!wasSelected) {
+            d3.select(selectedNode)
+                .transition()
+                .duration(duration)
+                .attr("r", selectedRadius)
+                .attr("selected", "true");
+
+            d3.select(selectedRow)
+                .transition()
+                .duration(duration)
+                .style("background-color", "white")
+                .style("color", "black")
+                .attr("selected", "true");
+
+            //showCommunication(selectedIP);
+        }
+    }
+
+    function handleKeyPress(event) {
+        switch (event.key) {
+            case "Escape":
+                clearSelection();
+                break;
+            case "Delete":
+                graphSvg.selectAll("circle")
+                    .filter(function (d) {
+                        // TODO: Execute only once
+                        return (d.selected === true);
+                    })
+                    .transition()
+                    .duration(duration)
+                    .attr("fill", "darkgrey")
+                    .attr("isolated", "true");
+                break;
+            case "Enter":
+                graphSvg.selectAll("circle")
+                    .filter(function (d) {
+                        return (d.selected === true);
+                    })
+                    .transition()
+                    .duration(duration)
+                    .attr("r", selectedRadius)
+                    .attr("fill", (node) => (node.reachable ? "#3BD16F" : "#F03A47"))
+                    .attr("isolated", "true");
+                break;
+        }
+    }
+
+    function clearSelection() {
+        // Clear nodes
+        graphSvg
+            .selectAll("circle")
+            .transition()
+            .duration(duration)
+            .attr("r", unselectedRadius)
+            .attr("fill", (node) => (node.reachable ? nodeReachableColor : nodeUnreachableColor))
+            .attr("selected", "false");
+
+        graphSvg
+            .transition()
+            .duration(duration)
+            .select("circle[ip='" + openWrtIP + "']")
+            .attr("fill", openWrtColor);
+
+        // Clear links
+        graphSvg
+            .selectAll("line")
+            .transition()
+            .duration(duration)
+            .style("stroke", "darkgray")
+            .style("stroke-width", "1")
+            .attr("marked", "false");
+
+        // Clear table
+        tableSvg
+            .selectAll("tr")
+            .transition()
+            .duration(duration)
+            .style("background-color", "transparent")
+            .style("color", "white");
+    }
+
+    function showCommunication(selectedIP) {
+        // Get communications
+        let linkedIPs = [];
+        let communications = getCommunicationsStatic();
+
+        communications.forEach(function (communication) {
+            if (communication[0] === selectedIP) {
+                linkedIPs.push(communication[1]);
+            } else if (communication[1] === selectedIP) {
+                linkedIPs.push(communication[0]);
+            }
+        });
+
+        console.log("Linked: " + linkedIPs);
+
+        // Highlight nodes
+        graphSvg
+            .selectAll("circle")
+            .filter(function () {
+                return linkedIPs.includes(this.getAttribute("ip"));
+            })
+
+            .transition()
+            .duration(duration)
+            .attr("r", unselectedRadius + 2)
+            .attr("fill", "orange");
+
+        // Highlight links
+        // graphSvg
+        //     .selectAll("line")
+        //     .filter(function (line) {
+        //         line.marked =
+        //             linkedIPs.includes(line.target.ip) || line.target === selectedIP || linkedIPs.includes(selectedIP);
+        //         return line.marked;
+        //     })
+        //     .transition()
+        //     .duration(duration)
+        //     .attr("marked", "true")
+        //     .style("stroke", "orange")
+        //     .style("stroke-width", "3");
+    }
+
+    // Returns the IP of a node or a row
+    function getIP(element) {
+        if (element.ip) {
+            return element.ip;
+        }
+        else if (element[1]) {
+            return element[1];
+        }
+        else {
+            return undefined;
+        }
+    }
 }
