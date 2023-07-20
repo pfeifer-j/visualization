@@ -1,5 +1,5 @@
 import { html, LitElement, TemplateResult, nothing } from "lit";
-import { styles } from "./styles";
+import { styles } from "./css";
 import { state } from "lit/decorators/state";
 import * as d3 from "d3";
 import { generateView } from './view';
@@ -15,11 +15,15 @@ export class NetworkVisualization extends LitElement {
   // The internal reactive states
   @state() private _header: string | typeof nothing;
 
+  // The configuration provided by the editor
+  @state() private _config: Config | undefined;
+
   // Private property
   private _hass: HomeAssistant;
 
   // Lifecycle interface
   public setConfig(config: Config) {
+    this._config = config;
     this._header = config.header === "" ? nothing : config.header;
 
     // Call set hass() to immediately adjust to a changed entity
@@ -66,7 +70,7 @@ export class NetworkVisualization extends LitElement {
 
     setTimeout(() => {
       const graphSvg = d3.select(this.renderRoot.querySelector(graphSelector));
-      generateView(this);
+      generateView(this, this._config); // Pass the _config object to the generateView function
     }, 0);
 
     return html`

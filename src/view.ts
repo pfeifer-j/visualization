@@ -1,25 +1,38 @@
 import * as d3 from "d3";
-import { getDevicesStatic } from "./router";
-import { getDevicesDynamic } from "./router";
-import { getCommunicationStatic as getCommunicationsStatic } from "./switch";
-import { getCommunicationDynamic as getCommunicationsDynamic } from "./switch";
+// Live Imports
+import { getDevices } from "./network";
+import { getCommunications } from "./network";
 
-// Visualisation constants
-const graphWidth = 500;
-const graphHeight = 500;
-const tableWidth = 350;
-const tableHeight = 500;
-const selectedRadius = 15;
-const unselectedRadius = 10;
-const nodeReachableColor = "#3BD16F";
-const nodeUnreachableColor = "#F03A47"
-const openWrtIP = "192.168.1.1"
-const openWrtColor = "lightblue";
-const graphForce = -300;
-const duration = 200;
+//Example Imports
+import { getDevicesStatic } from "./network";
+import { getCommunicationsStatic } from "./network";
 
 // Initialize the d3.js visualization
-export function generateView(htmlSource) {
+export async function generateView(htmlSource, config) {
+
+    // Visualisation constants
+    const graphWidth = config.graphWidth || 500;
+    const graphHeight = config.graphHeight || 500;
+    const tableWidth = config.tableWidth || 350;
+    const tableHeight = config.tableHeight || 500;
+    const unselectedRadius = config.unselectedRadius || 10;
+    const communicatedRadius = config.communicatedRadius || 12;
+    const selectedRadius = config.selectedRadius || 15;
+    const nodeReachable = config.nodeReachable || "#3BD16F";
+    const nodeUnreachable = config.nodeUnreachable || "#F03A47";
+    const nodeHighlighted = config.nodeHighlighted || "orange";
+    const rowDefault = config.rowDefault || "transparent";
+    const rowSelected = config.rowSelected || "white";
+    const fontDefault = config.fontDefault || "white";
+    const fontSelected = config.fontSelected || "black";
+    const linkDefault = config.linkDefault || "darkgray";
+    const linkHighlighted = config.linkHighlighted || "orange";
+    const linkWidthDefault = config.linkWidthDefault || 1;
+    const linkWidthHighlighted = config.linkWidthHighlighted || 5;
+    const openWrtIP = config.openWrtIP || "192.168.1.1";
+    const openWrtColor = config.openWrtColor || "lightblue";
+    const graphForce = config.graphForce || -300;
+    const duration = config.duration || 200;
 
     // Get the network data
     let data = {
@@ -27,28 +40,39 @@ export function generateView(htmlSource) {
         links: [],
     };
 
-    let devices = getDevicesStatic();
+    let devices; // = getDevicesStatic();
+    try {
+        devices = await getDevices();
 
-    // Generate device nodes
-    devices.forEach((device) => {
-        let [hostname, ip, mac, reachable, host] = device;
+        // Generate device nodes
+        devices.forEach((device) => {
+            let [hostname, ip, mac, reachable, host] = device;
 
-        data.nodes.push({
-            host: host,
-            name: hostname,
-            ip: ip,
-            mac: mac,
-            reachable: reachable,
+            data.nodes.push({
+                host: host,
+                name: hostname,
+                ip: ip,
+                mac: mac,
+                reachable: reachable,
+            });
+
+            data.links.push({ source: host, target: ip, marked: false });
         });
-
-        data.links.push({ source: host, target: ip, marked: false });
-    });
+    } catch (error) {
+        console.error('Error generating the devicelist:', error);
+    }
 
     // Generate graph
     let graphSelector = "#graphSvg";
-    let graphElement = htmlSource.renderRoot.querySelector(graphSelector);
+    let graphSvgElement = htmlSource.renderRoot.querySelector(graphSelector);
+
+    // Clear existing visualisation in the graph
+    clearExistingVisualization(graphSvgElement, "circle");
+    clearExistingVisualization(graphSvgElement, "line");
+
+
     let graphSvg = d3
-        .select(graphElement)
+        .select(graphSvgElement)
         .call(
             d3.zoom().on("zoom", function (event) {
                 graphSvg.attr("transform", event.transform);
@@ -58,8 +82,8 @@ export function generateView(htmlSource) {
         .append("g");
 
     // Define the dimensions of the card and the SVG element
-    graphElement.setAttribute('width', graphWidth);
-    graphElement.setAttribute('height', graphHeight);
+    graphSvgElement.setAttribute('width', graphWidth);
+    graphSvgElement.setAttribute('height', graphHeight);
 
     // Add background to graphSvg
     graphSvg.append("rect")
@@ -77,9 +101,9 @@ export function generateView(htmlSource) {
         .append("line")
         .attr("source", (link) => link.source)
         .attr("target", (link) => link.target)
-        .attr("stroke-width", 1)
+        .attr("stroke-width", linkWidthDefault)
         .attr("marked", "false")
-        .style("stroke", "darkgray");
+        .style("stroke", linkDefault);
 
     let nodes = graphSvg
         .append("g")
@@ -88,7 +112,7 @@ export function generateView(htmlSource) {
         .enter()
         .append("circle")
         .attr("r", unselectedRadius)
-        .attr("fill", (node) => (node.reachable ? nodeReachableColor : nodeUnreachableColor))
+        .attr("fill", (node) => (node.reachable ? nodeReachable : nodeUnreachable))
         .attr("name", (node) => node.name)
         .attr("ip", (node) => node.ip)
         .attr("mac", (node) => node.mac)
@@ -159,6 +183,9 @@ export function generateView(htmlSource) {
     let tableSvg = d3
         .select(tableSvgElement)
         .append("g");
+
+    // Clear existing visualisation in the table
+    clearExistingVisualization(tableSvgElement, "tr");
 
     // Define the dimensions of the card and the SVG element
     tableSvgElement.setAttribute('width', tableWidth);
@@ -257,8 +284,8 @@ export function generateView(htmlSource) {
         // Highlight node and row
         if (selectedNode.getAttribute("selected") === "false") {
             d3.select(selectedRow)
-                .style("background-color", "white")
-                .style("color", "black");
+                .style("background-color", rowSelected)
+                .style("color", fontSelected);
 
             d3.select(selectedNode)
                 .transition()
@@ -294,8 +321,8 @@ export function generateView(htmlSource) {
                 .attr("r", unselectedRadius);
 
             d3.select(selectedRow)
-                .style("background-color", "transparent")
-                .style("color", "white");
+                .style("background-color", rowDefault)
+                .style("color", fontDefault);
         }
     }
 
@@ -332,11 +359,11 @@ export function generateView(htmlSource) {
             d3.select(selectedRow)
                 .transition()
                 .duration(duration)
-                .style("background-color", "white")
-                .style("color", "black")
+                .style("background-color", rowSelected)
+                .style("color", fontSelected)
                 .attr("selected", "true");
 
-            //showCommunication(selectedIP);
+            showCommunication(selectedIP);
         }
     }
 
@@ -377,13 +404,14 @@ export function generateView(htmlSource) {
             .transition()
             .duration(duration)
             .attr("r", unselectedRadius)
-            .attr("fill", (node) => (node.reachable ? nodeReachableColor : nodeUnreachableColor))
+            .attr("fill", (node) => (node.reachable ? nodeReachable : nodeUnreachable))
             .attr("selected", "false");
 
         graphSvg
             .transition()
             .duration(duration)
             .select("circle[ip='" + openWrtIP + "']")
+            .attr("r", unselectedRadius)
             .attr("fill", openWrtColor);
 
         // Clear links
@@ -391,8 +419,8 @@ export function generateView(htmlSource) {
             .selectAll("line")
             .transition()
             .duration(duration)
-            .style("stroke", "darkgray")
-            .style("stroke-width", "1")
+            .style("stroke", linkDefault)
+            .style("stroke-width", linkWidthDefault)
             .attr("marked", "false");
 
         // Clear table
@@ -400,24 +428,30 @@ export function generateView(htmlSource) {
             .selectAll("tr")
             .transition()
             .duration(duration)
-            .style("background-color", "transparent")
-            .style("color", "white");
+            .style("background-color", rowDefault)
+            .style("color", fontDefault);
     }
 
-    function showCommunication(selectedIP) {
-        // Get communications
+    async function showCommunication(selectedIP) {
+        let communications = getCommunicationsStatic;
         let linkedIPs = [];
-        let communications = getCommunicationsStatic();
 
-        communications.forEach(function (communication) {
-            if (communication[0] === selectedIP) {
-                linkedIPs.push(communication[1]);
-            } else if (communication[1] === selectedIP) {
-                linkedIPs.push(communication[0]);
-            }
-        });
+        // try {
+        //     communications = await getCommunications();
 
-        console.log("Linked: " + linkedIPs);
+        //     // Get the connected IP's
+        //     communications.forEach(function (communication) {
+        //         if (communication[0] === selectedIP) {
+        //             linkedIPs.push(communication[1]);
+        //         } else if (communication[1] === selectedIP) {
+        //             linkedIPs.push(communication[0]);
+        //         }
+        //     });
+
+        //     // Rest of your code to highlight nodes and links
+        // } catch (error) {
+        //     console.error('Error generating the connections:', error);
+        // }
 
         // Highlight nodes
         graphSvg
@@ -425,26 +459,32 @@ export function generateView(htmlSource) {
             .filter(function () {
                 return linkedIPs.includes(this.getAttribute("ip"));
             })
-
             .transition()
             .duration(duration)
-            .attr("r", unselectedRadius + 2)
-            .attr("fill", "orange");
+            .attr("r", communicatedRadius)
+            .attr("fill", nodeHighlighted);
 
         // Highlight links
-        // graphSvg
-        //     .selectAll("line")
-        //     .filter(function (line) {
-        //         line.marked =
-        //             linkedIPs.includes(line.target.ip) || line.target === selectedIP || linkedIPs.includes(selectedIP);
-        //         return line.marked;
-        //     })
-        //     .transition()
-        //     .duration(duration)
-        //     .attr("marked", "true")
-        //     .style("stroke", "orange")
-        //     .style("stroke-width", "3");
+        graphSvg
+            .selectAll("line")
+            .filter(function (line) {
+                let sourceIP = line.source.ip;
+                let targetIP = line.target.ip;
+
+                // Check if the link is part of the shortest path
+                let isPartOfShortestPath = linkedIPs.includes(sourceIP) && linkedIPs.includes(targetIP);
+
+                // Check if the link is the selected IP or connected to it
+                let isConnectedToSelectedIP = sourceIP === selectedIP || targetIP === selectedIP;
+
+                return isPartOfShortestPath || isConnectedToSelectedIP;
+            })
+            .transition()
+            .duration(duration)
+            .style("stroke", linkHighlighted)
+            .style("stroke-width", linkWidthHighlighted);
     }
+
 
     // Returns the IP of a node or a row
     function getIP(element) {
@@ -457,5 +497,11 @@ export function generateView(htmlSource) {
         else {
             return undefined;
         }
+    }
+
+    // Remove existing visualisations if the design is changed within the Home Assistant Editor
+    function clearExistingVisualization(svgElement, elementSelector) {
+        const svg = d3.select(svgElement);
+        svg.selectAll(elementSelector).remove();
     }
 }
