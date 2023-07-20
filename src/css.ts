@@ -7,28 +7,31 @@ export const styles = css`
     flex-direction: column;
     align-items: stretch;
   }
+  #element-preview{
+    overflow: auto;
+  }
+  #network-visualization{
+    overflow: auto;
+  }
   .card-content {
     flex: 1;
     display: flex;
-    width: 800px;
+    width: 80vb;
     overflow: hidden;
-  }
-  .centered-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
   }
   .card-container {
     display: flex;
     flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
   }
   .graph-container,
-  justify-content: left;
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-  user-select: text;
+    justify-content: left;
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    user-select: text;
   }
   .table-container {
     justify-content: r;

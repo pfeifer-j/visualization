@@ -74,11 +74,9 @@ export class NetworkVisualization extends LitElement {
     }, 0);
 
     return html`
-      <div class="centered-container">
-        <ha-card header="${this._header}">
-          <div class="card-content">${content}</div>
-        </ha-card>
-      </div>
+      <ha-card header="${this._header}">
+        <div class="card-content">${content}</div>
+      </ha-card>
     `;
   }
 }
