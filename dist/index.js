@@ -637,7 +637,7 @@ class NetworkVisualization extends (0, _lit.LitElement) {
         const graphSelector = `#${graphId}`;
         setTimeout(()=>{
             const graphSvg = _d3.select(this.renderRoot.querySelector(graphSelector));
-            (0, _view.generateView)(this, this._config); // Pass the _config object to the generateView function
+            if (this._config) (0, _view.generateView)(this, this._config);
         }, 0);
         return (0, _lit.html)`
       <ha-card header="${this._header}">
@@ -1857,31 +1857,28 @@ const styles = (0, _lit.css)`
     flex-direction: column;
     align-items: stretch;
   }
-  #element-preview{
-    overflow: auto;
-  }
-  #network-visualization{
-    overflow: auto;
-  }
   .card-content {
     flex: 1;
     display: flex;
     width: 80vb;
     overflow: hidden;
   }
-  .card-container {
+  .centered-container {
     display: flex;
-    flex-wrap: nowrap;
     justify-content: center;
     align-items: center;
     height: 100%;
   }
-  .graph-container,
-    justify-content: left;
-    flex: 1;
+  .card-container {
     display: flex;
-    overflow: hidden;
-    user-select: text;
+    flex-wrap: nowrap;
+  }
+  .graph-container,
+  justify-content: left;
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  user-select: text;
   }
   .table-container {
     justify-content: r;
@@ -1892,14 +1889,14 @@ const styles = (0, _lit.css)`
   }
   #graphSvg {
     width: 100%;
-    height: 500px;
+    height: 100%;
     box-sizing: border-box;
     padding: 2px;
     user-select: text;
   }
   #tableSvg {
     width: 100%;
-    height: 500px;
+    height: 100%;
     box-sizing: border-box;
     border: 2px solid darkgray;
     padding: 2px;
@@ -25330,17 +25327,38 @@ function nopropagation(event) {
 },{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"1ce4O":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
-// Initialize the d3.js visualization
+// Generate the view and update it after a set interval if the device list has changed
 parcelHelpers.export(exports, "generateView", ()=>generateView);
+// Initialize the d3.js visualization
+parcelHelpers.export(exports, "generateSvg", ()=>generateSvg);
 var _d3 = require("d3");
-// Live Imports
+//Example Imports
 var _network = require("./network");
 async function generateView(htmlSource, config) {
+    let devices = await (0, _network.getDevicesStatic)();
+    generateSvg(htmlSource, config, devices);
+    const renderInterval = config.renderInterval;
+    console.log(renderInterval);
+    setInterval(()=>{
+        console.log(config.renderInterval);
+        updateGraphIfNeeded(htmlSource, config, devices);
+    }, config.renderInterval || 60000); // 60 seconds is the default
+}
+// Function to check for changes in the devices list and update the graph if needed
+async function updateGraphIfNeeded(htmlSource, config, devices) {
+    const newDevices = await (0, _network.getDevicesStatic)();
+    if (JSON.stringify(devices) !== JSON.stringify(newDevices)) {
+        devices = newDevices;
+        generateSvg(htmlSource, config, devices);
+    }
+}
+async function generateSvg(htmlSource, config, devices) {
+    console.log(config);
     // Visualisation constants
-    const graphWidth = config.graphWidth || 500;
-    const graphHeight = config.graphHeight || 500;
-    const tableWidth = config.tableWidth || 350;
-    const tableHeight = config.tableHeight || 500;
+    const graphWidth = 500;
+    const graphHeight = 500;
+    const tableWidth = 350;
+    const tableHeight = 500;
     const unselectedRadius = config.unselectedRadius || 10;
     const communicatedRadius = config.communicatedRadius || 12;
     const selectedRadius = config.selectedRadius || 15;
@@ -25364,9 +25382,8 @@ async function generateView(htmlSource, config) {
         nodes: [],
         links: []
     };
-    let devices; // = getDevicesStatic();
+    //let devices = await getDevices();
     try {
-        devices = await (0, _network.getDevices)();
         // Generate device nodes
         devices.forEach((device)=>{
             let [hostname, ip, mac, reachable, host] = device;
@@ -25388,20 +25405,20 @@ async function generateView(htmlSource, config) {
     }
     // Generate graph
     let graphSelector = "#graphSvg";
-    let graphSvgElement = htmlSource.renderRoot.querySelector(graphSelector);
-    // Clear existing visualisation in the graph
-    clearExistingVisualization(graphSvgElement, "circle");
-    clearExistingVisualization(graphSvgElement, "line");
-    let graphSvg = _d3.select(graphSvgElement).call(_d3.zoom().on("zoom", function(event) {
+    let graphElement = htmlSource.renderRoot.querySelector(graphSelector);
+    let graphSvg = _d3.select(graphElement).call(_d3.zoom().on("zoom", function(event) {
         graphSvg.attr("transform", event.transform);
     })).on("dblclick.zoom", null).append("g");
+    // Clear existing visualisation in the graph
+    clearExistingVisualization(graphElement, "circle");
+    clearExistingVisualization(graphElement, "line");
     // Define the dimensions of the card and the SVG element
-    graphSvgElement.setAttribute("width", graphWidth);
-    graphSvgElement.setAttribute("height", graphHeight);
+    graphElement.setAttribute("width", graphWidth);
+    graphElement.setAttribute("height", graphHeight);
     // Add background to graphSvg
     graphSvg.append("rect").attr("width", graphWidth).attr("height", graphHeight).attr("fill", "transparent").on("click", clearSelection);
     // Fill graph with data
-    let links = graphSvg.append("g").selectAll("line").data(data.links).enter().append("line").attr("source", (link)=>link.source).attr("target", (link)=>link.target).attr("stroke-width", linkWidthDefault).attr("marked", "false").style("stroke", linkDefault);
+    let links = graphSvg.append("g").selectAll("line").data(data.links).enter().append("line").attr("source", (link)=>link.source).attr("target", (link)=>link.target).style("stroke", linkDefault).attr("stroke-width", linkWidthDefault).attr("marked", "false");
     let nodes = graphSvg.append("g").selectAll("circle").data(data.nodes).enter().append("circle").attr("r", unselectedRadius).attr("fill", (node)=>node.reachable ? nodeReachable : nodeUnreachable).attr("name", (node)=>node.name).attr("ip", (node)=>node.ip).attr("mac", (node)=>node.mac).attr("host", (node)=>node.host).attr("reachable", (node)=>node.reachable).attr("selected", false).attr("isolated", false);
     // Mark source node
     graphSvg.select("circle[ip='" + openWrtIP + "']").attr("fill", openWrtColor);
@@ -25441,13 +25458,13 @@ async function generateView(htmlSource, config) {
     }
     // Generate table
     let tableSelector = "#tableSvg";
-    let tableSvgElement = htmlSource.renderRoot.querySelector(tableSelector);
-    let tableSvg = _d3.select(tableSvgElement).append("g");
+    let tableElement = htmlSource.renderRoot.querySelector(tableSelector);
+    let tableSvg = _d3.select(tableElement).append("g");
     // Clear existing visualisation in the table
-    clearExistingVisualization(tableSvgElement, "tr");
+    clearExistingVisualization(tableElement, "tr");
     // Define the dimensions of the card and the SVG element
-    tableSvgElement.setAttribute("width", tableWidth);
-    tableSvgElement.setAttribute("height", tableHeight);
+    tableElement.setAttribute("width", tableWidth);
+    tableElement.setAttribute("height", tableHeight);
     // Create the table structure
     const tableData = data.nodes.map((node)=>[
             node.name,
@@ -25525,7 +25542,7 @@ async function generateView(htmlSource, config) {
         clearSelection();
         // Update selection
         if (!wasSelected) {
-            _d3.select(selectedNode).transition().duration(duration).attr("r", selectedRadius).attr("selected", "true");
+            _d3.select(selectedNode).transition().duration(duration).attr("r", selectedRadius).attr("fill", nodeHighlighted).attr("selected", "true");
             _d3.select(selectedRow).transition().duration(duration).style("background-color", rowSelected).style("color", fontSelected).attr("selected", "true");
             showCommunication(selectedIP);
         }
@@ -25537,7 +25554,6 @@ async function generateView(htmlSource, config) {
                 break;
             case "Delete":
                 graphSvg.selectAll("circle").filter(function(d) {
-                    // TODO: Execute only once
                     return d.selected === true;
                 }).transition().duration(duration).attr("fill", "darkgrey").attr("isolated", "true");
                 break;
@@ -25553,7 +25569,7 @@ async function generateView(htmlSource, config) {
         graphSvg.selectAll("circle").transition().duration(duration).attr("r", unselectedRadius).attr("fill", (node)=>node.reachable ? nodeReachable : nodeUnreachable).attr("selected", "false");
         graphSvg.transition().duration(duration).select("circle[ip='" + openWrtIP + "']").attr("r", unselectedRadius).attr("fill", openWrtColor);
         // Clear links
-        graphSvg.selectAll("line").transition().duration(duration).style("stroke", linkDefault).style("stroke-width", linkWidthDefault).attr("marked", "false");
+        graphSvg.selectAll("line").transition().duration(duration).style("stroke", linkDefault).attr("stroke-width", linkWidthDefault).attr("marked", "false");
         // Clear table
         tableSvg.selectAll("tr").transition().duration(duration).style("background-color", rowDefault).style("color", fontDefault);
     }
@@ -25587,7 +25603,7 @@ async function generateView(htmlSource, config) {
             // Check if the link is the selected IP or connected to it
             let isConnectedToSelectedIP = sourceIP === selectedIP || targetIP === selectedIP;
             return isPartOfShortestPath || isConnectedToSelectedIP;
-        }).transition().duration(duration).style("stroke", linkHighlighted).style("stroke-width", linkWidthHighlighted);
+        }).transition().duration(duration).style("stroke", linkHighlighted).attr("stroke-width", linkWidthHighlighted);
     }
     // Returns the IP of a node or a row
     function getIP(element) {
@@ -25629,7 +25645,7 @@ function getDevicesStatic() {
         ];
         deviceList.push(deviceEntry);
     }
-    console.log("Device List: " + deviceList);
+    //console.log("Device List: " + deviceList);
     return deviceList;
 }
 function getCommunicationsStatic() {
@@ -25665,7 +25681,7 @@ function getDevices() {
             ];
             processedDeviceList.push(deviceEntry);
         }
-        console.log("Device List: " + processedDeviceList);
+        //console.log("Device List: " + processedDeviceList);
         return processedDeviceList;
     }).catch((error)=>{
         // Handle any errors that occur during the request
@@ -25684,7 +25700,7 @@ function getCommunications() {
             ];
             communicationList.push(communicationEntry);
         }
-        console.log("Communication List: " + communicationList);
+        //console.log("Communication List: " + communicationList);
         return communicationList;
     }).catch((error)=>{
         // Handle any errors that occur during the request
@@ -25736,157 +25752,136 @@ class NetworkVisualizationEditor extends (0, _lit.LitElement) {
           ></input>
         </div>
         <div class="row">
-          <label class="label cell" for="graphWidth">Graph Width:</label>
+          <label class="label cell" for="renderInterval">Render Interval in ms:</label>
           <input
             @change="${this.handleChangedEvent}"
-            class="value cell" id="graphWidth" value="${this._config.graphWidth || 500}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="graphHeight">Graph Height:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="graphHeight" value="${this._config.graphHeight || 500}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="tableWidth">Table Width:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="tableWidth" value="${this._config.tableWidth || 350}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="tableHeight">Table Height:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="tableHeight" value="${this._config.tableHeight || 500}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="unselectedRadius">Unselected Radius:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="unselectedRadius" value="${this._config.unselectedRadius || 10}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="communicatedRadius">Communicated Radius:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="communicatedRadius" value="${this._config.communicatedRadius || 12}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="selectedRadius">Selected Radius:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="selectedRadius" value="${this._config.selectedRadius || 15}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="nodeReachable">Node Reachable Color:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="nodeReachable" value="${this._config.nodeReachable || "#3BD16F"}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="nodeUnreachable">Node Unreachable Color:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="nodeUnreachable" value="${this._config.nodeUnreachable || "#F03A47"}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="nodeHighlighted">Node Highlighted Color:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="nodeHighlighted" value="${this._config.nodeHighlighted || "orange"}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="rowDefault">Row Default Color:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="rowDefault" value="${this._config.rowDefault || "transparent"}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="rowSelected">Row Selected Color:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="rowSelected" value="${this._config.rowSelected || "white"}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="fontDefault">Default Font Color:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="fontDefault" value="${this._config.fontDefault || "white"}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="fontSelected">Selected Font Color:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="fontSelected" value="${this._config.fontSelected || "black"}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="linkDefault">Default Link Color:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="linkDefault" value="${this._config.linkDefault || "darkgray"}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="linkHighlighted">Highlighted Link Color:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="linkHighlighted" value="${this._config.linkHighlighted || "orange"}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="linkWidthDefault">Default Link Width:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="linkWidthDefault" value="${this._config.linkWidthDefault || 1}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="linkWidthHighlighted">Highlighted Link Width:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="linkWidthHighlighted" value="${this._config.linkWidthHighlighted || 5}"
+            class="value cell" id="renderInterval" value="${this._config.renderInterval}"
           ></input>
         </div>
         <div class="row">
           <label class="label cell" for="openWrtIP">OpenWrt IP:</label>
           <input
             @change="${this.handleChangedEvent}"
-            class="value cell" id="openWrtIP" value="${this._config.openWrtIP || "192.168.1.1"}"
+            class="value cell" id="openWrtIP" value="${this._config.openWrtIP}"
           ></input>
         </div>
         <div class="row">
           <label class="label cell" for="openWrtColor">OpenWrt Color:</label>
           <input
             @change="${this.handleChangedEvent}"
-            class="value cell" id="openWrtColor" value="${this._config.openWrtColor || "lightblue"}"
+            class="value cell" id="openWrtColor" value="${this._config.openWrtColor}"
+          ></input>
+        </div>
+        <div class="row">
+          <label class="label cell" for="unselectedRadius">Unselected Radius:</label>
+          <input
+            @change="${this.handleChangedEvent}"
+            class="value cell" id="unselectedRadius" value="${this._config.unselectedRadius}"
+          ></input>
+        </div>
+        <div class="row">
+          <label class="label cell" for="communicatedRadius">Communicated Radius:</label>
+          <input
+            @change="${this.handleChangedEvent}"
+            class="value cell" id="communicatedRadius" value="${this._config.communicatedRadius}"
+          ></input>
+        </div>
+        <div class="row">
+          <label class="label cell" for="selectedRadius">Selected Radius:</label>
+          <input
+            @change="${this.handleChangedEvent}"
+            class="value cell" id="selectedRadius" value="${this._config.selectedRadius}"
+          ></input>
+        </div>
+        <div class="row">
+          <label class="label cell" for="nodeReachable">Node Reachable Color:</label>
+          <input
+            @change="${this.handleChangedEvent}"
+            class="value cell" id="nodeReachable" value="${this._config.nodeReachable}"
+          ></input>
+        </div>
+        <div class="row">
+          <label class="label cell" for="nodeUnreachable">Node Unreachable Color:</label>
+          <input
+            @change="${this.handleChangedEvent}"
+            class="value cell" id="nodeUnreachable" value="${this._config.nodeUnreachable}"
+          ></input>
+        </div>
+        <div class="row">
+          <label class="label cell" for="nodeHighlighted">Node Highlighted Color:</label>
+          <input
+            @change="${this.handleChangedEvent}"
+            class="value cell" id="nodeHighlighted" value="${this._config.nodeHighlighted}"
+          ></input>
+        </div>
+        <div class="row">
+          <label class="label cell" for="rowDefault">Row Default Color:</label>
+          <input
+            @change="${this.handleChangedEvent}"
+            class="value cell" id="rowDefault" value="${this._config.rowDefault}"
+          ></input>
+        </div>
+        <div class="row">
+          <label class="label cell" for="rowSelected">Row Selected Color:</label>
+          <input
+            @change="${this.handleChangedEvent}"
+            class="value cell" id="rowSelected" value="${this._config.rowSelected}"
+          ></input>
+        </div>
+        <div class="row">
+          <label class="label cell" for="fontDefault">Default Font Color:</label>
+          <input
+            @change="${this.handleChangedEvent}"
+            class="value cell" id="fontDefault" value="${this._config.fontDefault}"
+          ></input>
+        </div>
+        <div class="row">
+          <label class="label cell" for="fontSelected">Selected Font Color:</label>
+          <input
+            @change="${this.handleChangedEvent}"
+            class="value cell" id="fontSelected" value="${this._config.fontSelected}"
+          ></input>
+        </div>
+        <div class="row">
+          <label class="label cell" for="linkDefault">Default Link Color:</label>
+          <input
+            @change="${this.handleChangedEvent}"
+            class="value cell" id="linkDefault" value="${this._config.linkDefault}"
+          ></input>
+        </div>
+        <div class="row">
+          <label class="label cell" for="linkHighlighted">Highlighted Link Color:</label>
+          <input
+            @change="${this.handleChangedEvent}"
+            class="value cell" id="linkHighlighted" value="${this._config.linkHighlighted}"
+          ></input>
+        </div>
+        <div class="row">
+          <label class="label cell" for="linkWidthDefault">Default Link Width:</label>
+          <input
+            @change="${this.handleChangedEvent}"
+            class="value cell" id="linkWidthDefault" value="${this._config.linkWidthDefault}"
+          ></input>
+        </div>
+        <div class="row">
+          <label class="label cell" for="linkWidthHighlighted">Highlighted Link Width:</label>
+          <input
+            @change="${this.handleChangedEvent}"
+            class="value cell" id="linkWidthHighlighted" value="${this._config.linkWidthHighlighted}"
           ></input>
         </div>
         <div class="row">
           <label class="label cell" for="graphForce">Graph Force:</label>
           <input
             @change="${this.handleChangedEvent}"
-            class="value cell" id="graphForce" value="${this._config.graphForce || -300}"
+            class="value cell" id="graphForce" value="${this._config.graphForce}"
           ></input>
         </div>
         <div class="row">
           <label class="label cell" for="duration">Duration:</label>
           <input
             @change="${this.handleChangedEvent}"
-            class="value cell" id="duration" value="${this._config.duration || 200}"
+            class="value cell" id="duration" value="${this._config.duration}"
           ></input>
         </div>
       </form>
@@ -25894,31 +25889,73 @@ class NetworkVisualizationEditor extends (0, _lit.LitElement) {
     }
     handleChangedEvent(changedEvent) {
         const target = changedEvent.target;
-        // this._config is readonly, copy needed
-        const newConfig = Object.assign({}, this._config);
-        if (target.id == "header") newConfig.header = target.value;
-        else if (target.id == "graphWidth") newConfig.graphWidth = parseInt(target.value);
-        else if (target.id == "graphHeight") newConfig.graphHeight = parseInt(target.value);
-        else if (target.id == "tableWidth") newConfig.tableWidth = parseInt(target.value);
-        else if (target.id == "tableHeight") newConfig.tableHeight = parseInt(target.value);
-        else if (target.id == "unselectedRadius") newConfig.unselectedRadius = parseInt(target.value);
-        else if (target.id == "communicatedRadius") newConfig.communicatedRadius = parseInt(target.value);
-        else if (target.id == "selectedRadius") newConfig.selectedRadius = parseInt(target.value);
-        else if (target.id == "nodeReachable") newConfig.nodeReachable = target.value;
-        else if (target.id == "nodeUnreachable") newConfig.nodeUnreachable = target.value;
-        else if (target.id == "nodeHighlighted") newConfig.nodeHighlighted = target.value;
-        else if (target.id == "rowDefault") newConfig.rowDefault = target.value;
-        else if (target.id == "rowSelected") newConfig.rowSelected = target.value;
-        else if (target.id == "fontDefault") newConfig.fontDefault = target.value;
-        else if (target.id == "fontSelected") newConfig.fontSelected = target.value;
-        else if (target.id == "linkDefault") newConfig.linkDefault = target.value;
-        else if (target.id == "linkHighlighted") newConfig.linkHighlighted = target.value;
-        else if (target.id == "linkWidthDefault") newConfig.linkWidthDefault = parseInt(target.value);
-        else if (target.id == "linkWidthHighlighted") newConfig.linkWidthHighlighted = parseInt(target.value);
-        else if (target.id == "openWrtIP") newConfig.openWrtIP = target.value;
-        else if (target.id == "openWrtColor") newConfig.openWrtColor = target.value;
-        else if (target.id == "graphForce") newConfig.graphForce = parseInt(target.value);
-        else if (target.id == "duration") newConfig.duration = parseInt(target.value);
+        const newConfig = {
+            ...this._config
+        }; // Use spread operator for object copying
+        switch(target.id){
+            case "header":
+                newConfig.header = target.value;
+                break;
+            case "renderInterval":
+                newConfig.renderInterval = parseInt(target.value);
+                break;
+            case "openWrtIP":
+                newConfig.openWrtIP = target.value;
+                break;
+            case "openWrtColor":
+                newConfig.openWrtColor = target.value;
+                break;
+            case "unselectedRadius":
+                newConfig.unselectedRadius = parseInt(target.value);
+                break;
+            case "communicatedRadius":
+                newConfig.communicatedRadius = parseInt(target.value);
+                break;
+            case "selectedRadius":
+                newConfig.selectedRadius = parseInt(target.value);
+                break;
+            case "nodeReachable":
+                newConfig.nodeReachable = target.value;
+                break;
+            case "nodeUnreachable":
+                newConfig.nodeUnreachable = target.value;
+                break;
+            case "nodeHighlighted":
+                newConfig.nodeHighlighted = target.value;
+                break;
+            case "rowDefault":
+                newConfig.rowDefault = target.value;
+                break;
+            case "rowSelected":
+                newConfig.rowSelected = target.value;
+                break;
+            case "fontDefault":
+                newConfig.fontDefault = target.value;
+                break;
+            case "fontSelected":
+                newConfig.fontSelected = target.value;
+                break;
+            case "linkDefault":
+                newConfig.linkDefault = target.value;
+                break;
+            case "linkHighlighted":
+                newConfig.linkHighlighted = target.value;
+                break;
+            case "linkWidthDefault":
+                newConfig.linkWidthDefault = parseInt(target.value);
+                break;
+            case "linkWidthHighlighted":
+                newConfig.linkWidthHighlighted = parseInt(target.value);
+                break;
+            case "graphForce":
+                newConfig.graphForce = parseInt(target.value);
+                break;
+            case "duration":
+                newConfig.duration = parseInt(target.value);
+                break;
+            default:
+                break; // Do nothing if the target.id doesn't match any case
+        }
         const messageEvent = new CustomEvent("config-changed", {
             detail: {
                 config: newConfig

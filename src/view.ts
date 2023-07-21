@@ -7,14 +7,42 @@ import { getCommunications } from "./network";
 import { getDevicesStatic } from "./network";
 import { getCommunicationsStatic } from "./network";
 
-// Initialize the d3.js visualization
+// Generate the view and update it after a set interval if the device list has changed
 export async function generateView(htmlSource, config) {
+    let devices = await getDevicesStatic();
+
+    generateSvg(htmlSource, config, devices);
+
+    const renderInterval = config.renderInterval;
+
+    console.log(renderInterval);
+
+    setInterval(() => {
+        console.log(config.renderInterval);
+        updateGraphIfNeeded(htmlSource, config, devices);
+    }, config.renderInterval || 60000); // 60 seconds is the default
+}
+
+// Function to check for changes in the devices list and update the graph if needed
+async function updateGraphIfNeeded(htmlSource, config, devices) {
+    const newDevices = await getDevicesStatic();
+
+    if (JSON.stringify(devices) !== JSON.stringify(newDevices)) {
+        devices = newDevices;
+        generateSvg(htmlSource, config, devices);
+    }
+}
+
+// Initialize the d3.js visualization
+export async function generateSvg(htmlSource, config, devices) {
+
+    console.log(config);
 
     // Visualisation constants
-    const graphWidth = config.graphWidth || 500;
-    const graphHeight = config.graphHeight || 500;
-    const tableWidth = config.tableWidth || 350;
-    const tableHeight = config.tableHeight || 500;
+    const graphWidth = 500;
+    const graphHeight = 500;
+    const tableWidth = 350;
+    const tableHeight = 500;
     const unselectedRadius = config.unselectedRadius || 10;
     const communicatedRadius = config.communicatedRadius || 12;
     const selectedRadius = config.selectedRadius || 15;
@@ -40,10 +68,9 @@ export async function generateView(htmlSource, config) {
         links: [],
     };
 
-    let devices; // = getDevicesStatic();
-    try {
-        devices = await getDevices();
+    //let devices = await getDevices();
 
+    try {
         // Generate device nodes
         devices.forEach((device) => {
             let [hostname, ip, mac, reachable, host] = device;
@@ -64,15 +91,9 @@ export async function generateView(htmlSource, config) {
 
     // Generate graph
     let graphSelector = "#graphSvg";
-    let graphSvgElement = htmlSource.renderRoot.querySelector(graphSelector);
-
-    // Clear existing visualisation in the graph
-    clearExistingVisualization(graphSvgElement, "circle");
-    clearExistingVisualization(graphSvgElement, "line");
-
-
+    let graphElement = htmlSource.renderRoot.querySelector(graphSelector);
     let graphSvg = d3
-        .select(graphSvgElement)
+        .select(graphElement)
         .call(
             d3.zoom().on("zoom", function (event) {
                 graphSvg.attr("transform", event.transform);
@@ -81,9 +102,13 @@ export async function generateView(htmlSource, config) {
         .on("dblclick.zoom", null)
         .append("g");
 
+    // Clear existing visualisation in the graph
+    clearExistingVisualization(graphElement, "circle");
+    clearExistingVisualization(graphElement, "line");
+
     // Define the dimensions of the card and the SVG element
-    graphSvgElement.setAttribute('width', graphWidth);
-    graphSvgElement.setAttribute('height', graphHeight);
+    graphElement.setAttribute('width', graphWidth);
+    graphElement.setAttribute('height', graphHeight);
 
     // Add background to graphSvg
     graphSvg.append("rect")
@@ -101,9 +126,9 @@ export async function generateView(htmlSource, config) {
         .append("line")
         .attr("source", (link) => link.source)
         .attr("target", (link) => link.target)
+        .style("stroke", linkDefault)
         .attr("stroke-width", linkWidthDefault)
-        .attr("marked", "false")
-        .style("stroke", linkDefault);
+        .attr("marked", "false");
 
     let nodes = graphSvg
         .append("g")
@@ -122,7 +147,9 @@ export async function generateView(htmlSource, config) {
         .attr("isolated", false);
 
     // Mark source node
-    graphSvg.select("circle[ip='" + openWrtIP + "']").attr("fill", openWrtColor);
+    graphSvg
+        .select("circle[ip='" + openWrtIP + "']")
+        .attr("fill", openWrtColor);
 
     // Add physics to the graph
     let simulation = d3
@@ -179,17 +206,17 @@ export async function generateView(htmlSource, config) {
 
     // Generate table
     let tableSelector = "#tableSvg";
-    let tableSvgElement = htmlSource.renderRoot.querySelector(tableSelector);
+    let tableElement = htmlSource.renderRoot.querySelector(tableSelector);
     let tableSvg = d3
-        .select(tableSvgElement)
+        .select(tableElement)
         .append("g");
 
     // Clear existing visualisation in the table
-    clearExistingVisualization(tableSvgElement, "tr");
+    clearExistingVisualization(tableElement, "tr");
 
     // Define the dimensions of the card and the SVG element
-    tableSvgElement.setAttribute('width', tableWidth);
-    tableSvgElement.setAttribute('height', tableHeight);
+    tableElement.setAttribute('width', tableWidth);
+    tableElement.setAttribute('height', tableHeight);
 
     // Create the table structure
     const tableData = data.nodes.map(node => [node.name, node.ip, node.mac]);
@@ -354,6 +381,7 @@ export async function generateView(htmlSource, config) {
                 .transition()
                 .duration(duration)
                 .attr("r", selectedRadius)
+                .attr("fill", nodeHighlighted)
                 .attr("selected", "true");
 
             d3.select(selectedRow)
@@ -375,7 +403,6 @@ export async function generateView(htmlSource, config) {
             case "Delete":
                 graphSvg.selectAll("circle")
                     .filter(function (d) {
-                        // TODO: Execute only once
                         return (d.selected === true);
                     })
                     .transition()
@@ -420,7 +447,7 @@ export async function generateView(htmlSource, config) {
             .transition()
             .duration(duration)
             .style("stroke", linkDefault)
-            .style("stroke-width", linkWidthDefault)
+            .attr("stroke-width", linkWidthDefault)
             .attr("marked", "false");
 
         // Clear table
@@ -482,7 +509,7 @@ export async function generateView(htmlSource, config) {
             .transition()
             .duration(duration)
             .style("stroke", linkHighlighted)
-            .style("stroke-width", linkWidthHighlighted);
+            .attr("stroke-width", linkWidthHighlighted)
     }
 
 

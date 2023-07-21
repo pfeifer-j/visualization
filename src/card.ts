@@ -70,7 +70,9 @@ export class NetworkVisualization extends LitElement {
 
     setTimeout(() => {
       const graphSvg = d3.select(this.renderRoot.querySelector(graphSelector));
-      generateView(this, this._config); // Pass the _config object to the generateView function
+      if (this._config) {
+        generateView(this, this._config);
+      }
     }, 0);
 
     return html`

@@ -16,7 +16,8 @@ export function getDevicesStatic() {
         ];
         deviceList.push(deviceEntry);
     }
-    console.log("Device List: " + deviceList);
+
+    //console.log("Device List: " + deviceList);
     return deviceList;
 }
 
@@ -56,7 +57,7 @@ export function getDevices() {
                 processedDeviceList.push(deviceEntry);
             }
 
-            console.log("Device List: " + processedDeviceList);
+            //console.log("Device List: " + processedDeviceList);
 
             return processedDeviceList;
         })
@@ -82,7 +83,7 @@ export function getCommunications() {
                 ];
                 communicationList.push(communicationEntry);
             }
-            console.log("Communication List: " + communicationList);
+            //console.log("Communication List: " + communicationList);
 
             return communicationList;
         })
