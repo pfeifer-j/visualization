@@ -23,6 +23,14 @@ export const styles = css`
     display: flex;
     flex-wrap: nowrap;
   }
+  #editor-table {
+    table-layout: fixed;
+    width: 100%;
+  }
+  .table-border {
+    border: 2px solid darkgray;
+    box-sizing: border-box;
+  }
   .graph-container,
   justify-content: left;
   flex: 1;
@@ -48,7 +56,6 @@ export const styles = css`
     width: 100%;
     height: 100%;
     box-sizing: border-box;
-    border: 2px solid darkgray;
     padding: 2px;
     user-select: text;
   }

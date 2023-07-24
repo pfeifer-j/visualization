@@ -16,8 +16,6 @@ export function getDevicesStatic() {
         ];
         deviceList.push(deviceEntry);
     }
-
-    //console.log("Device List: " + deviceList);
     return deviceList;
 }
 
@@ -56,9 +54,6 @@ export function getDevices() {
                 ];
                 processedDeviceList.push(deviceEntry);
             }
-
-            //console.log("Device List: " + processedDeviceList);
-
             return processedDeviceList;
         })
         .catch(error => {
@@ -83,8 +78,6 @@ export function getCommunications() {
                 ];
                 communicationList.push(communicationEntry);
             }
-            //console.log("Communication List: " + communicationList);
-
             return communicationList;
         })
         .catch(error => {
@@ -92,5 +85,15 @@ export function getCommunications() {
             console.error('Error:', error);
             return communicationList;
         });
+}
+
+// Sends a api-request to isolate the device with the given ip from the network.
+export function isolateDevice(selectedIP) {
+    console.log(selectedIP + " is now isolated from the network.")
+}
+
+// Sends a api-request to remove the isolation of the device with the given ip.
+export function includeDevice(selectedIP) {
+    console.log(selectedIP + " is no longer isolated.")
 }
 

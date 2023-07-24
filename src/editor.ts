@@ -24,7 +24,8 @@ export class NetworkVisualizationEditor extends LitElement {
 
   render() {
     return html`
-      <form class="table">
+      <form class="table" id="editor-table>
+        <h3>General</h3>
         <div class="row">
           <label class="label cell" for="header">Header:</label>
           <input
@@ -33,6 +34,13 @@ export class NetworkVisualizationEditor extends LitElement {
           ></input>
         </div>
         <div class="row">
+        <label class="label cell" for="openWrtIP">OpenWrt IP:</label>
+        <input
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="openWrtIP" value="${this._config.openWrtIP}"
+        ></input>
+      </div>
+        <div class="row">
           <label class="label cell" for="renderInterval">Render Interval in ms:</label>
           <input
             @change="${this.handleChangedEvent}"
@@ -40,38 +48,36 @@ export class NetworkVisualizationEditor extends LitElement {
           ></input>
         </div>
         <div class="row">
-          <label class="label cell" for="openWrtIP">OpenWrt IP:</label>
+          <label class="label cell" for="graphForce">Graph Force:</label>
           <input
             @change="${this.handleChangedEvent}"
-            class="value cell" id="openWrtIP" value="${this._config.openWrtIP}"
+            class="value cell" id="graphForce" value="${this._config.graphForce}"
           ></input>
         </div>
+        <div class="row">
+          <label class="label cell" for="duration">Animation Duration:</label>
+          <input
+            @change="${this.handleChangedEvent}"
+            class="value cell" id="duration" value="${this._config.duration}"
+          ></input>
+        </div>
+        <div class="row">
+          <label class="label cell" for="isDemo">Demo Network:</label>
+          <input type="checkbox"
+            @change="${this.handleChangedEvent}"
+            class="value cell" id="isDemo"
+            ?checked="${this._config.isDemo}"
+          ></input>
+          <span class="slider round"></span>
+          </label>
+        </div>
+
+        <h3>Color:</h3>
         <div class="row">
           <label class="label cell" for="openWrtColor">OpenWrt Color:</label>
           <input
             @change="${this.handleChangedEvent}"
             class="value cell" id="openWrtColor" value="${this._config.openWrtColor}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="unselectedRadius">Unselected Radius:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="unselectedRadius" value="${this._config.unselectedRadius}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="communicatedRadius">Communicated Radius:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="communicatedRadius" value="${this._config.communicatedRadius}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="selectedRadius">Selected Radius:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="selectedRadius" value="${this._config.selectedRadius}"
           ></input>
         </div>
         <div class="row">
@@ -110,31 +116,63 @@ export class NetworkVisualizationEditor extends LitElement {
           ></input>
         </div>
         <div class="row">
-          <label class="label cell" for="fontDefault">Default Font Color:</label>
+        <label class="label cell" for="fontDefault">Default Font Color:</label>
+        <input
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="fontDefault" value="${this._config.fontDefault}"
+        ></input>
+      </div>
+      <div class="row">
+        <label class="label cell" for="fontSelected">Selected Font Color:</label>
+        <input
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="fontSelected" value="${this._config.fontSelected}"
+        ></input>
+      </div>
+      <div class="row">
+        <label class="label cell" for="linkDefault">Default Link Color:</label>
+        <input
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="linkDefault" value="${this._config.linkDefault}"
+        ></input>
+      </div>
+      <div class="row">
+        <label class="label cell" for="linkHighlighted">Highlighted Link Color:</label>
+        <input
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="linkHighlighted" value="${this._config.linkHighlighted}"
+        ></input>
+      </div>
+
+        <h3>Shape:</h3>
+        <!--
+        <div class="row">
+          <label class="label cell" for="shape">Shape:</label>
           <input
             @change="${this.handleChangedEvent}"
-            class="value cell" id="fontDefault" value="${this._config.fontDefault}"
+            class="value cell" id="shape" value="${this._config.shape}"
+          ></input>
+        </div>
+        -->
+        <div class="row">
+          <label class="label cell" for="unselectedRadius">Unselected Radius:</label>
+          <input
+            @change="${this.handleChangedEvent}"
+            class="value cell" id="unselectedRadius" value="${this._config.unselectedRadius}"
           ></input>
         </div>
         <div class="row">
-          <label class="label cell" for="fontSelected">Selected Font Color:</label>
+          <label class="label cell" for="communicatedRadius">Communicated Radius:</label>
           <input
             @change="${this.handleChangedEvent}"
-            class="value cell" id="fontSelected" value="${this._config.fontSelected}"
+            class="value cell" id="communicatedRadius" value="${this._config.communicatedRadius}"
           ></input>
         </div>
         <div class="row">
-          <label class="label cell" for="linkDefault">Default Link Color:</label>
+          <label class="label cell" for="selectedRadius">Selected Radius:</label>
           <input
             @change="${this.handleChangedEvent}"
-            class="value cell" id="linkDefault" value="${this._config.linkDefault}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="linkHighlighted">Highlighted Link Color:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="linkHighlighted" value="${this._config.linkHighlighted}"
+            class="value cell" id="selectedRadius" value="${this._config.selectedRadius}"
           ></input>
         </div>
         <div class="row">
@@ -149,20 +187,6 @@ export class NetworkVisualizationEditor extends LitElement {
           <input
             @change="${this.handleChangedEvent}"
             class="value cell" id="linkWidthHighlighted" value="${this._config.linkWidthHighlighted}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="graphForce">Graph Force:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="graphForce" value="${this._config.graphForce}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="duration">Duration:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="duration" value="${this._config.duration}"
           ></input>
         </div>
       </form>
@@ -182,6 +206,9 @@ export class NetworkVisualizationEditor extends LitElement {
         break;
       case "openWrtIP":
         newConfig.openWrtIP = target.value;
+        break;
+      case "isDemo":
+        newConfig.isDemo = target.checked;
         break;
       case "openWrtColor":
         newConfig.openWrtColor = target.value;
@@ -233,6 +260,9 @@ export class NetworkVisualizationEditor extends LitElement {
         break;
       case "duration":
         newConfig.duration = parseInt(target.value);
+        break;
+      case "shape":
+        newConfig.shape = target.value;
         break;
       default:
         break; // Do nothing if the target.id doesn't match any case

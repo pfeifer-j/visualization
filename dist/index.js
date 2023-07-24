@@ -1873,6 +1873,14 @@ const styles = (0, _lit.css)`
     display: flex;
     flex-wrap: nowrap;
   }
+  #editor-table {
+    table-layout: fixed;
+    width: 100%;
+  }
+  .table-border {
+    border: 2px solid darkgray;
+    box-sizing: border-box;
+  }
   .graph-container,
   justify-content: left;
   flex: 1;
@@ -1898,7 +1906,6 @@ const styles = (0, _lit.css)`
     width: 100%;
     height: 100%;
     box-sizing: border-box;
-    border: 2px solid darkgray;
     padding: 2px;
     user-select: text;
   }
@@ -25332,29 +25339,25 @@ parcelHelpers.export(exports, "generateView", ()=>generateView);
 // Initialize the d3.js visualization
 parcelHelpers.export(exports, "generateSvg", ()=>generateSvg);
 var _d3 = require("d3");
-//Example Imports
+// Live Imports
 var _network = require("./network");
 async function generateView(htmlSource, config) {
-    let devices = await (0, _network.getDevicesStatic)();
+    const devices = config.isDemo ? await (0, _network.getDevicesStatic)() : await (0, _network.getDevices)();
     generateSvg(htmlSource, config, devices);
-    const renderInterval = config.renderInterval;
-    console.log(renderInterval);
     setInterval(()=>{
-        console.log(config.renderInterval);
         updateGraphIfNeeded(htmlSource, config, devices);
     }, config.renderInterval || 60000); // 60 seconds is the default
 }
 // Function to check for changes in the devices list and update the graph if needed
 async function updateGraphIfNeeded(htmlSource, config, devices) {
-    const newDevices = await (0, _network.getDevicesStatic)();
+    const newDevices = config.isDemo ? await (0, _network.getDevicesStatic)() : await (0, _network.getDevices)();
     if (JSON.stringify(devices) !== JSON.stringify(newDevices)) {
         devices = newDevices;
         generateSvg(htmlSource, config, devices);
     }
 }
 async function generateSvg(htmlSource, config, devices) {
-    console.log(config);
-    // Visualisation constants
+    // Visualisation constants and default settings
     const graphWidth = 500;
     const graphHeight = 500;
     const tableWidth = 350;
@@ -25377,6 +25380,8 @@ async function generateSvg(htmlSource, config, devices) {
     const openWrtColor = config.openWrtColor || "lightblue";
     const graphForce = config.graphForce || -300;
     const duration = config.duration || 200;
+    //ToDo: Implement multiple shapes
+    const shape = "circle"; //config.shape || "circle";
     // Get the network data
     let data = {
         nodes: [],
@@ -25410,7 +25415,7 @@ async function generateSvg(htmlSource, config, devices) {
         graphSvg.attr("transform", event.transform);
     })).on("dblclick.zoom", null).append("g");
     // Clear existing visualisation in the graph
-    clearExistingVisualization(graphElement, "circle");
+    clearExistingVisualization(graphElement, shape);
     clearExistingVisualization(graphElement, "line");
     // Define the dimensions of the card and the SVG element
     graphElement.setAttribute("width", graphWidth);
@@ -25419,7 +25424,7 @@ async function generateSvg(htmlSource, config, devices) {
     graphSvg.append("rect").attr("width", graphWidth).attr("height", graphHeight).attr("fill", "transparent").on("click", clearSelection);
     // Fill graph with data
     let links = graphSvg.append("g").selectAll("line").data(data.links).enter().append("line").attr("source", (link)=>link.source).attr("target", (link)=>link.target).style("stroke", linkDefault).attr("stroke-width", linkWidthDefault).attr("marked", "false");
-    let nodes = graphSvg.append("g").selectAll("circle").data(data.nodes).enter().append("circle").attr("r", unselectedRadius).attr("fill", (node)=>node.reachable ? nodeReachable : nodeUnreachable).attr("name", (node)=>node.name).attr("ip", (node)=>node.ip).attr("mac", (node)=>node.mac).attr("host", (node)=>node.host).attr("reachable", (node)=>node.reachable).attr("selected", false).attr("isolated", false);
+    let nodes = graphSvg.append("g").selectAll(shape).data(data.nodes).enter().append(shape).attr("r", unselectedRadius).attr("fill", (node)=>node.reachable ? nodeReachable : nodeUnreachable).attr("name", (node)=>node.name).attr("ip", (node)=>node.ip).attr("mac", (node)=>node.mac).attr("host", (node)=>node.host).attr("reachable", (node)=>node.reachable).attr("selected", false).attr("isolated", false);
     // Mark source node
     graphSvg.select("circle[ip='" + openWrtIP + "']").attr("fill", openWrtColor);
     // Add physics to the graph
@@ -25472,6 +25477,7 @@ async function generateSvg(htmlSource, config, devices) {
             node.mac
         ]);
     const table = _d3.create("table");
+    table.classed("table-border", true);
     const thead = table.append("thead");
     const tbody = table.append("tbody");
     // Add table headers
@@ -25499,7 +25505,7 @@ async function generateSvg(htmlSource, config, devices) {
     function handleMouseOver(event, element) {
         let selectedIP = getIP(element);
         // Get the node
-        let selectedNode = graphSvg.selectAll("circle").filter(function() {
+        let selectedNode = graphSvg.selectAll(shape).filter(function() {
             return this.getAttribute("ip") === selectedIP;
         }).node();
         // Get the row
@@ -25515,7 +25521,7 @@ async function generateSvg(htmlSource, config, devices) {
     function handleMouseOut(event, element) {
         let selectedIP = getIP(element);
         // Get the node
-        let selectedNode = graphSvg.selectAll("circle").filter(function() {
+        let selectedNode = graphSvg.selectAll(shape).filter(function() {
             return this.getAttribute("ip") === selectedIP;
         }).node();
         // Get the row
@@ -25531,7 +25537,7 @@ async function generateSvg(htmlSource, config, devices) {
     function handleClick(event, element) {
         let selectedIP = getIP(element);
         // Get the node
-        let selectedNode = graphSvg.selectAll("circle").filter(function() {
+        let selectedNode = graphSvg.selectAll(shape).filter(function() {
             return this.getAttribute("ip") === selectedIP;
         }).node();
         // Get the row
@@ -25547,26 +25553,30 @@ async function generateSvg(htmlSource, config, devices) {
             showCommunication(selectedIP);
         }
     }
-    function handleKeyPress(event) {
+    function handleKeyPress(event, element) {
         switch(event.key){
             case "Escape":
                 clearSelection();
                 break;
             case "Delete":
-                graphSvg.selectAll("circle").filter(function(d) {
-                    return d.selected === true;
+                graphSvg.selectAll(shape).filter(function(d) {
+                    let selected = this.getAttribute("selected") === "true";
+                    if (selected) (0, _network.isolateDevice)(this.getAttribute("ip"));
+                    return selected;
                 }).transition().duration(duration).attr("fill", "darkgrey").attr("isolated", "true");
                 break;
             case "Enter":
-                graphSvg.selectAll("circle").filter(function(d) {
-                    return d.selected === true;
+                graphSvg.selectAll(shape).filter(function(d) {
+                    let selected = this.getAttribute("selected") === "true";
+                    if (selected) (0, _network.includeDevice)(this.getAttribute("ip"));
+                    return selected;
                 }).transition().duration(duration).attr("r", selectedRadius).attr("fill", (node)=>node.reachable ? "#3BD16F" : "#F03A47").attr("isolated", "true");
                 break;
         }
     }
     function clearSelection() {
         // Clear nodes
-        graphSvg.selectAll("circle").transition().duration(duration).attr("r", unselectedRadius).attr("fill", (node)=>node.reachable ? nodeReachable : nodeUnreachable).attr("selected", "false");
+        graphSvg.selectAll(shape).transition().duration(duration).attr("r", unselectedRadius).attr("fill", (node)=>node.reachable ? nodeReachable : nodeUnreachable).attr("selected", "false");
         graphSvg.transition().duration(duration).select("circle[ip='" + openWrtIP + "']").attr("r", unselectedRadius).attr("fill", openWrtColor);
         // Clear links
         graphSvg.selectAll("line").transition().duration(duration).style("stroke", linkDefault).attr("stroke-width", linkWidthDefault).attr("marked", "false");
@@ -25591,7 +25601,7 @@ async function generateSvg(htmlSource, config, devices) {
         //     console.error('Error generating the connections:', error);
         // }
         // Highlight nodes
-        graphSvg.selectAll("circle").filter(function() {
+        graphSvg.selectAll(shape).filter(function() {
             return linkedIPs.includes(this.getAttribute("ip"));
         }).transition().duration(duration).attr("r", communicatedRadius).attr("fill", nodeHighlighted);
         // Highlight links
@@ -25629,6 +25639,10 @@ parcelHelpers.export(exports, "getCommunicationsStatic", ()=>getCommunicationsSt
 parcelHelpers.export(exports, "getDevices", ()=>getDevices);
 // Retrieve communications from OVS
 parcelHelpers.export(exports, "getCommunications", ()=>getCommunications);
+// Sends a api-request to isolate the device with the given ip from the network.
+parcelHelpers.export(exports, "isolateDevice", ()=>isolateDevice);
+// Sends a api-request to remove the isolation of the device with the given ip.
+parcelHelpers.export(exports, "includeDevice", ()=>includeDevice);
 var _devicesJson = require("./example/devices.json");
 var _devicesJsonDefault = parcelHelpers.interopDefault(_devicesJson);
 var _communicationsJson = require("./example/communications.json");
@@ -25645,7 +25659,6 @@ function getDevicesStatic() {
         ];
         deviceList.push(deviceEntry);
     }
-    //console.log("Device List: " + deviceList);
     return deviceList;
 }
 function getCommunicationsStatic() {
@@ -25681,7 +25694,6 @@ function getDevices() {
             ];
             processedDeviceList.push(deviceEntry);
         }
-        //console.log("Device List: " + processedDeviceList);
         return processedDeviceList;
     }).catch((error)=>{
         // Handle any errors that occur during the request
@@ -25700,13 +25712,18 @@ function getCommunications() {
             ];
             communicationList.push(communicationEntry);
         }
-        //console.log("Communication List: " + communicationList);
         return communicationList;
     }).catch((error)=>{
         // Handle any errors that occur during the request
         console.error("Error:", error);
         return communicationList;
     });
+}
+function isolateDevice(selectedIP) {
+    console.log(selectedIP + " is now isolated from the network.");
+}
+function includeDevice(selectedIP) {
+    console.log(selectedIP + " is no longer isolated.");
 }
 
 },{"./example/devices.json":"apQ7d","./example/communications.json":"hX0uw","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"apQ7d":[function(require,module,exports) {
@@ -25743,7 +25760,8 @@ class NetworkVisualizationEditor extends (0, _lit.LitElement) {
     })();
     render() {
         return (0, _lit.html)`
-      <form class="table">
+      <form class="table" id="editor-table>
+        <h3>General</h3>
         <div class="row">
           <label class="label cell" for="header">Header:</label>
           <input
@@ -25752,6 +25770,13 @@ class NetworkVisualizationEditor extends (0, _lit.LitElement) {
           ></input>
         </div>
         <div class="row">
+        <label class="label cell" for="openWrtIP">OpenWrt IP:</label>
+        <input
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="openWrtIP" value="${this._config.openWrtIP}"
+        ></input>
+      </div>
+        <div class="row">
           <label class="label cell" for="renderInterval">Render Interval in ms:</label>
           <input
             @change="${this.handleChangedEvent}"
@@ -25759,38 +25784,36 @@ class NetworkVisualizationEditor extends (0, _lit.LitElement) {
           ></input>
         </div>
         <div class="row">
-          <label class="label cell" for="openWrtIP">OpenWrt IP:</label>
+          <label class="label cell" for="graphForce">Graph Force:</label>
           <input
             @change="${this.handleChangedEvent}"
-            class="value cell" id="openWrtIP" value="${this._config.openWrtIP}"
+            class="value cell" id="graphForce" value="${this._config.graphForce}"
           ></input>
         </div>
+        <div class="row">
+          <label class="label cell" for="duration">Animation Duration:</label>
+          <input
+            @change="${this.handleChangedEvent}"
+            class="value cell" id="duration" value="${this._config.duration}"
+          ></input>
+        </div>
+        <div class="row">
+          <label class="label cell" for="isDemo">Demo Network:</label>
+          <input type="checkbox"
+            @change="${this.handleChangedEvent}"
+            class="value cell" id="isDemo"
+            ?checked="${this._config.isDemo}"
+          ></input>
+          <span class="slider round"></span>
+          </label>
+        </div>
+
+        <h3>Color:</h3>
         <div class="row">
           <label class="label cell" for="openWrtColor">OpenWrt Color:</label>
           <input
             @change="${this.handleChangedEvent}"
             class="value cell" id="openWrtColor" value="${this._config.openWrtColor}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="unselectedRadius">Unselected Radius:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="unselectedRadius" value="${this._config.unselectedRadius}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="communicatedRadius">Communicated Radius:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="communicatedRadius" value="${this._config.communicatedRadius}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="selectedRadius">Selected Radius:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="selectedRadius" value="${this._config.selectedRadius}"
           ></input>
         </div>
         <div class="row">
@@ -25829,31 +25852,63 @@ class NetworkVisualizationEditor extends (0, _lit.LitElement) {
           ></input>
         </div>
         <div class="row">
-          <label class="label cell" for="fontDefault">Default Font Color:</label>
+        <label class="label cell" for="fontDefault">Default Font Color:</label>
+        <input
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="fontDefault" value="${this._config.fontDefault}"
+        ></input>
+      </div>
+      <div class="row">
+        <label class="label cell" for="fontSelected">Selected Font Color:</label>
+        <input
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="fontSelected" value="${this._config.fontSelected}"
+        ></input>
+      </div>
+      <div class="row">
+        <label class="label cell" for="linkDefault">Default Link Color:</label>
+        <input
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="linkDefault" value="${this._config.linkDefault}"
+        ></input>
+      </div>
+      <div class="row">
+        <label class="label cell" for="linkHighlighted">Highlighted Link Color:</label>
+        <input
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="linkHighlighted" value="${this._config.linkHighlighted}"
+        ></input>
+      </div>
+
+        <h3>Shape:</h3>
+        <!--
+        <div class="row">
+          <label class="label cell" for="shape">Shape:</label>
           <input
             @change="${this.handleChangedEvent}"
-            class="value cell" id="fontDefault" value="${this._config.fontDefault}"
+            class="value cell" id="shape" value="${this._config.shape}"
+          ></input>
+        </div>
+        -->
+        <div class="row">
+          <label class="label cell" for="unselectedRadius">Unselected Radius:</label>
+          <input
+            @change="${this.handleChangedEvent}"
+            class="value cell" id="unselectedRadius" value="${this._config.unselectedRadius}"
           ></input>
         </div>
         <div class="row">
-          <label class="label cell" for="fontSelected">Selected Font Color:</label>
+          <label class="label cell" for="communicatedRadius">Communicated Radius:</label>
           <input
             @change="${this.handleChangedEvent}"
-            class="value cell" id="fontSelected" value="${this._config.fontSelected}"
+            class="value cell" id="communicatedRadius" value="${this._config.communicatedRadius}"
           ></input>
         </div>
         <div class="row">
-          <label class="label cell" for="linkDefault">Default Link Color:</label>
+          <label class="label cell" for="selectedRadius">Selected Radius:</label>
           <input
             @change="${this.handleChangedEvent}"
-            class="value cell" id="linkDefault" value="${this._config.linkDefault}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="linkHighlighted">Highlighted Link Color:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="linkHighlighted" value="${this._config.linkHighlighted}"
+            class="value cell" id="selectedRadius" value="${this._config.selectedRadius}"
           ></input>
         </div>
         <div class="row">
@@ -25868,20 +25923,6 @@ class NetworkVisualizationEditor extends (0, _lit.LitElement) {
           <input
             @change="${this.handleChangedEvent}"
             class="value cell" id="linkWidthHighlighted" value="${this._config.linkWidthHighlighted}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="graphForce">Graph Force:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="graphForce" value="${this._config.graphForce}"
-          ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="duration">Duration:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="duration" value="${this._config.duration}"
           ></input>
         </div>
       </form>
@@ -25901,6 +25942,9 @@ class NetworkVisualizationEditor extends (0, _lit.LitElement) {
                 break;
             case "openWrtIP":
                 newConfig.openWrtIP = target.value;
+                break;
+            case "isDemo":
+                newConfig.isDemo = target.checked;
                 break;
             case "openWrtColor":
                 newConfig.openWrtColor = target.value;
@@ -25952,6 +25996,9 @@ class NetworkVisualizationEditor extends (0, _lit.LitElement) {
                 break;
             case "duration":
                 newConfig.duration = parseInt(target.value);
+                break;
+            case "shape":
+                newConfig.shape = target.value;
                 break;
             default:
                 break; // Do nothing if the target.id doesn't match any case
