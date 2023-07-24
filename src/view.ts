@@ -1,6 +1,7 @@
 import * as d3 from "d3";
 // Live Imports
 import { getDevices } from "./network";
+import { getIsolatedDevices } from "./network";
 import { getCommunications } from "./network";
 import { isolateDevice } from "./network";
 import { includeDevice } from "./network";
@@ -16,12 +17,12 @@ export async function generateView(htmlSource, config) {
     generateSvg(htmlSource, config, devices);
 
     setInterval(() => {
-        updateGraphIfNeeded(htmlSource, config, devices);
+        updateGraph(htmlSource, config, devices);
     }, config.renderInterval || 60000); // 60 seconds is the default
 }
 
 // Function to check for changes in the devices list and update the graph if needed
-async function updateGraphIfNeeded(htmlSource, config, devices) {
+async function updateGraph(htmlSource, config, devices) {
     const newDevices = config.isDemo ? await getDevicesStatic() : await getDevices();
 
     if (JSON.stringify(devices) !== JSON.stringify(newDevices)) {
@@ -44,6 +45,7 @@ export async function generateSvg(htmlSource, config, devices) {
     const nodeReachable = config.nodeReachable || "#3BD16F";
     const nodeUnreachable = config.nodeUnreachable || "#F03A47";
     const nodeHighlighted = config.nodeHighlighted || "orange";
+    const nodeIsolated = config.nodeIsolated || "darkgray";
     const rowDefault = config.rowDefault || "transparent";
     const rowSelected = config.rowSelected || "white";
     const fontDefault = config.fontDefault || "white";
@@ -60,14 +62,11 @@ export async function generateSvg(htmlSource, config, devices) {
     //ToDo: Implement multiple shapes
     const shape = "circle"; //config.shape || "circle";
 
-
     // Get the network data
     let data = {
         nodes: [],
         links: [],
     };
-
-    //let devices = await getDevices();
 
     try {
         // Generate device nodes
@@ -102,7 +101,7 @@ export async function generateSvg(htmlSource, config, devices) {
         .append("g");
 
     // Clear existing visualisation in the graph
-    clearExistingVisualization(graphElement, shape);
+    clearExistingVisualization(graphElement, "circle");
     clearExistingVisualization(graphElement, "line");
 
     // Define the dimensions of the card and the SVG element
@@ -115,6 +114,9 @@ export async function generateSvg(htmlSource, config, devices) {
         .attr("height", graphHeight)
         .attr("fill", "transparent")
         .on("click", clearSelection);
+
+    // Read isolated devices
+    let isolatedDevices = await getIsolatedDevices();
 
     // Fill graph with data
     let links = graphSvg
@@ -131,19 +133,20 @@ export async function generateSvg(htmlSource, config, devices) {
 
     let nodes = graphSvg
         .append("g")
-        .selectAll(shape)
+        .selectAll("circle")
         .data(data.nodes)
         .enter()
-        .append(shape)
+        .append("circle")
         .attr("r", unselectedRadius)
-        .attr("fill", (node) => (node.reachable ? nodeReachable : nodeUnreachable))
+        .attr("fill", (node) => isolatedDevices.includes(node.ip) ? nodeIsolated : (node.reachable ? nodeReachable : nodeUnreachable)
+        )
         .attr("name", (node) => node.name)
         .attr("ip", (node) => node.ip)
         .attr("mac", (node) => node.mac)
         .attr("host", (node) => node.host)
         .attr("reachable", (node) => node.reachable)
         .attr("selected", false)
-        .attr("isolated", false);
+        .attr("isolated", (node) => isolatedDevices.includes(node.ip));
 
     // Mark source node
     graphSvg
@@ -295,7 +298,7 @@ export async function generateSvg(htmlSource, config, devices) {
 
         // Get the node
         let selectedNode = graphSvg
-            .selectAll(shape)
+            .selectAll("circle")
             .filter(function () {
                 return this.getAttribute("ip") === selectedIP;
             })
@@ -327,7 +330,7 @@ export async function generateSvg(htmlSource, config, devices) {
 
         // Get the node
         let selectedNode = graphSvg
-            .selectAll(shape)
+            .selectAll("circle")
             .filter(function () {
                 return this.getAttribute("ip") === selectedIP;
             })
@@ -359,7 +362,7 @@ export async function generateSvg(htmlSource, config, devices) {
 
         // Get the node
         let selectedNode = graphSvg
-            .selectAll(shape)
+            .selectAll("circle")
             .filter(function () {
                 return this.getAttribute("ip") === selectedIP;
             })
@@ -373,16 +376,15 @@ export async function generateSvg(htmlSource, config, devices) {
             })
             .node();
 
-        let wasSelected = selectedNode.getAttribute("selected") === "true";
         clearSelection();
 
         // Update selection
-        if (!wasSelected) {
+        if (selectedNode.getAttribute("selected") === "false") {
             d3.select(selectedNode)
                 .transition()
                 .duration(duration)
                 .attr("r", selectedRadius)
-                .attr("fill", nodeHighlighted)
+                .attr("fill", selectedNode.getAttribute("isolated") === "true" ? nodeIsolated : nodeHighlighted)
                 .attr("selected", "true");
 
             d3.select(selectedRow)
@@ -396,39 +398,42 @@ export async function generateSvg(htmlSource, config, devices) {
         }
     }
 
-    function handleKeyPress(event, element) {
+    function handleKeyPress(event) {
         switch (event.key) {
             case "Escape":
                 clearSelection();
                 break;
             case "Delete":
-                graphSvg.selectAll(shape)
+                graphSvg.selectAll("circle")
                     .filter(function (d) {
                         let selected = this.getAttribute("selected") === "true";
                         if (selected) {
-                            isolateDevice(this.getAttribute("ip"));
+                            let selectedIP = this.getAttribute("ip");
+                            isolateDevice(selectedIP);
                         }
                         return selected;
                     })
                     .transition()
                     .duration(duration)
-                    .attr("fill", "darkgrey")
+                    .attr("fill", nodeIsolated)
                     .attr("isolated", "true");
+
                 break;
             case "Enter":
-                graphSvg.selectAll(shape)
+                graphSvg.selectAll("circle")
                     .filter(function (d) {
                         let selected = this.getAttribute("selected") === "true";
                         if (selected) {
-                            includeDevice(this.getAttribute("ip"));
+                            let selectedIP = this.getAttribute("ip");
+                            includeDevice(selectedIP);
                         }
                         return selected;
                     })
                     .transition()
                     .duration(duration)
                     .attr("r", selectedRadius)
-                    .attr("fill", (node) => (node.reachable ? "#3BD16F" : "#F03A47"))
-                    .attr("isolated", "true");
+                    .attr("fill", nodeHighlighted)
+                    .attr("isolated", "false");
                 break;
         }
     }
@@ -436,11 +441,24 @@ export async function generateSvg(htmlSource, config, devices) {
     function clearSelection() {
         // Clear nodes
         graphSvg
-            .selectAll(shape)
+            .selectAll("circle")
+            .filter(function () {
+                return this.getAttribute("isolated") === "false";
+            })
             .transition()
             .duration(duration)
             .attr("r", unselectedRadius)
             .attr("fill", (node) => (node.reachable ? nodeReachable : nodeUnreachable))
+            .attr("selected", "false");
+
+        graphSvg
+            .selectAll("circle")
+            .filter(function () {
+                return this.getAttribute("isolated") === "true";
+            })
+            .transition()
+            .duration(duration)
+            .attr("r", unselectedRadius)
             .attr("selected", "false");
 
         graphSvg
@@ -491,7 +509,7 @@ export async function generateSvg(htmlSource, config, devices) {
 
         // Highlight nodes
         graphSvg
-            .selectAll(shape)
+            .selectAll("circle")
             .filter(function () {
                 return linkedIPs.includes(this.getAttribute("ip"));
             })

@@ -25,7 +25,7 @@ export class NetworkVisualizationEditor extends LitElement {
   render() {
     return html`
       <form class="table" id="editor-table>
-        <h3>General</h3>
+      <h3>General:</h3>
         <div class="row">
           <label class="label cell" for="header">Header:</label>
           <input
@@ -34,14 +34,7 @@ export class NetworkVisualizationEditor extends LitElement {
           ></input>
         </div>
         <div class="row">
-        <label class="label cell" for="openWrtIP">OpenWrt IP:</label>
-        <input
-          @change="${this.handleChangedEvent}"
-          class="value cell" id="openWrtIP" value="${this._config.openWrtIP}"
-        ></input>
-      </div>
-        <div class="row">
-          <label class="label cell" for="renderInterval">Render Interval in ms:</label>
+          <label class="label cell" for="renderInterval">Render Interval in sec:</label>
           <input
             @change="${this.handleChangedEvent}"
             class="value cell" id="renderInterval" value="${this._config.renderInterval}"
@@ -55,22 +48,41 @@ export class NetworkVisualizationEditor extends LitElement {
           ></input>
         </div>
         <div class="row">
-          <label class="label cell" for="duration">Animation Duration:</label>
+          <label class="label cell" for="duration">Animation Duration in ms:</label>
           <input
             @change="${this.handleChangedEvent}"
             class="value cell" id="duration" value="${this._config.duration}"
           ></input>
         </div>
+
+        <h3>Network:</h3>
         <div class="row">
-          <label class="label cell" for="isDemo">Demo Network:</label>
-          <input type="checkbox"
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="isDemo"
-            ?checked="${this._config.isDemo}"
-          ></input>
-          <span class="slider round"></span>
-          </label>
-        </div>
+        <label class="label cell" for="openWrtIP">OpenWrt IP:</label>
+        <input
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="openWrtIP" value="${this._config.openWrtIP}"
+        ></input>
+      </div>
+      <div class="row">
+      <label class="label cell" for="mode">Network Mode:</label>
+      <select
+        id="mode"
+        class="value cell"
+        @change="${this.handleChangedEvent}">
+        <option value="software" ?selected="${this._config.mode === 'software'}">Software</option>
+        <option value="physical" ?selected="${this._config.mode === 'physical'}">Physical</option>
+      </select>
+      </div>
+      <div class="row">
+        <label class="label cell" for="isDemo">Demo Network:</label>
+        <input type="checkbox"
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="isDemo"
+          ?checked="${this._config.isDemo}"
+        ></input>
+        <span class="slider round"></span>
+        </label>
+      </div>
 
         <h3>Color:</h3>
         <div class="row">
@@ -101,6 +113,13 @@ export class NetworkVisualizationEditor extends LitElement {
             class="value cell" id="nodeHighlighted" value="${this._config.nodeHighlighted}"
           ></input>
         </div>
+        <div class="row">
+        <label class="label cell" for="nodeIsolated">Node Isolated Color:</label>
+        <input
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="nodeIsolated" value="${this._config.nodeIsolated}"
+        ></input>
+      </div>
         <div class="row">
           <label class="label cell" for="rowDefault">Row Default Color:</label>
           <input
@@ -207,6 +226,9 @@ export class NetworkVisualizationEditor extends LitElement {
       case "openWrtIP":
         newConfig.openWrtIP = target.value;
         break;
+      case "mode":
+        newConfig.mode = target.value;
+        break;
       case "isDemo":
         newConfig.isDemo = target.checked;
         break;
@@ -230,6 +252,9 @@ export class NetworkVisualizationEditor extends LitElement {
         break;
       case "nodeHighlighted":
         newConfig.nodeHighlighted = target.value;
+        break;
+      case "nodeIsolated":
+        newConfig.nodeIsolated = target.value;
         break;
       case "rowDefault":
         newConfig.rowDefault = target.value;

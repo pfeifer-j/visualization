@@ -621,6 +621,7 @@ class NetworkVisualization extends (0, _lit.LitElement) {
             header: "My Network:"
         };
     }
+    // Render the card
     render() {
         const content = (0, _lit.html)`
       <div class="card-container">
@@ -25345,11 +25346,11 @@ async function generateView(htmlSource, config) {
     const devices = config.isDemo ? await (0, _network.getDevicesStatic)() : await (0, _network.getDevices)();
     generateSvg(htmlSource, config, devices);
     setInterval(()=>{
-        updateGraphIfNeeded(htmlSource, config, devices);
+        updateGraph(htmlSource, config, devices);
     }, config.renderInterval || 60000); // 60 seconds is the default
 }
 // Function to check for changes in the devices list and update the graph if needed
-async function updateGraphIfNeeded(htmlSource, config, devices) {
+async function updateGraph(htmlSource, config, devices) {
     const newDevices = config.isDemo ? await (0, _network.getDevicesStatic)() : await (0, _network.getDevices)();
     if (JSON.stringify(devices) !== JSON.stringify(newDevices)) {
         devices = newDevices;
@@ -25368,6 +25369,7 @@ async function generateSvg(htmlSource, config, devices) {
     const nodeReachable = config.nodeReachable || "#3BD16F";
     const nodeUnreachable = config.nodeUnreachable || "#F03A47";
     const nodeHighlighted = config.nodeHighlighted || "orange";
+    const nodeIsolated = config.nodeIsolated || "darkgray";
     const rowDefault = config.rowDefault || "transparent";
     const rowSelected = config.rowSelected || "white";
     const fontDefault = config.fontDefault || "white";
@@ -25387,7 +25389,6 @@ async function generateSvg(htmlSource, config, devices) {
         nodes: [],
         links: []
     };
-    //let devices = await getDevices();
     try {
         // Generate device nodes
         devices.forEach((device)=>{
@@ -25415,16 +25416,18 @@ async function generateSvg(htmlSource, config, devices) {
         graphSvg.attr("transform", event.transform);
     })).on("dblclick.zoom", null).append("g");
     // Clear existing visualisation in the graph
-    clearExistingVisualization(graphElement, shape);
+    clearExistingVisualization(graphElement, "circle");
     clearExistingVisualization(graphElement, "line");
     // Define the dimensions of the card and the SVG element
     graphElement.setAttribute("width", graphWidth);
     graphElement.setAttribute("height", graphHeight);
     // Add background to graphSvg
     graphSvg.append("rect").attr("width", graphWidth).attr("height", graphHeight).attr("fill", "transparent").on("click", clearSelection);
+    // Read isolated devices
+    let isolatedDevices = await (0, _network.getIsolatedDevices)();
     // Fill graph with data
     let links = graphSvg.append("g").selectAll("line").data(data.links).enter().append("line").attr("source", (link)=>link.source).attr("target", (link)=>link.target).style("stroke", linkDefault).attr("stroke-width", linkWidthDefault).attr("marked", "false");
-    let nodes = graphSvg.append("g").selectAll(shape).data(data.nodes).enter().append(shape).attr("r", unselectedRadius).attr("fill", (node)=>node.reachable ? nodeReachable : nodeUnreachable).attr("name", (node)=>node.name).attr("ip", (node)=>node.ip).attr("mac", (node)=>node.mac).attr("host", (node)=>node.host).attr("reachable", (node)=>node.reachable).attr("selected", false).attr("isolated", false);
+    let nodes = graphSvg.append("g").selectAll("circle").data(data.nodes).enter().append("circle").attr("r", unselectedRadius).attr("fill", (node)=>isolatedDevices.includes(node.ip) ? nodeIsolated : node.reachable ? nodeReachable : nodeUnreachable).attr("name", (node)=>node.name).attr("ip", (node)=>node.ip).attr("mac", (node)=>node.mac).attr("host", (node)=>node.host).attr("reachable", (node)=>node.reachable).attr("selected", false).attr("isolated", (node)=>isolatedDevices.includes(node.ip));
     // Mark source node
     graphSvg.select("circle[ip='" + openWrtIP + "']").attr("fill", openWrtColor);
     // Add physics to the graph
@@ -25505,7 +25508,7 @@ async function generateSvg(htmlSource, config, devices) {
     function handleMouseOver(event, element) {
         let selectedIP = getIP(element);
         // Get the node
-        let selectedNode = graphSvg.selectAll(shape).filter(function() {
+        let selectedNode = graphSvg.selectAll("circle").filter(function() {
             return this.getAttribute("ip") === selectedIP;
         }).node();
         // Get the row
@@ -25521,7 +25524,7 @@ async function generateSvg(htmlSource, config, devices) {
     function handleMouseOut(event, element) {
         let selectedIP = getIP(element);
         // Get the node
-        let selectedNode = graphSvg.selectAll(shape).filter(function() {
+        let selectedNode = graphSvg.selectAll("circle").filter(function() {
             return this.getAttribute("ip") === selectedIP;
         }).node();
         // Get the row
@@ -25537,46 +25540,56 @@ async function generateSvg(htmlSource, config, devices) {
     function handleClick(event, element) {
         let selectedIP = getIP(element);
         // Get the node
-        let selectedNode = graphSvg.selectAll(shape).filter(function() {
+        let selectedNode = graphSvg.selectAll("circle").filter(function() {
             return this.getAttribute("ip") === selectedIP;
         }).node();
         // Get the row
         let selectedRow = tableSvg.selectAll("tr").filter(function() {
             return this.querySelector("td.ip") ? this.querySelector("td.ip").textContent === selectedIP : false;
         }).node();
-        let wasSelected = selectedNode.getAttribute("selected") === "true";
         clearSelection();
         // Update selection
-        if (!wasSelected) {
-            _d3.select(selectedNode).transition().duration(duration).attr("r", selectedRadius).attr("fill", nodeHighlighted).attr("selected", "true");
+        if (selectedNode.getAttribute("selected") === "false") {
+            _d3.select(selectedNode).transition().duration(duration).attr("r", selectedRadius).attr("fill", selectedNode.getAttribute("isolated") === "true" ? nodeIsolated : nodeHighlighted).attr("selected", "true");
             _d3.select(selectedRow).transition().duration(duration).style("background-color", rowSelected).style("color", fontSelected).attr("selected", "true");
             showCommunication(selectedIP);
         }
     }
-    function handleKeyPress(event, element) {
+    function handleKeyPress(event) {
         switch(event.key){
             case "Escape":
                 clearSelection();
                 break;
             case "Delete":
-                graphSvg.selectAll(shape).filter(function(d) {
+                graphSvg.selectAll("circle").filter(function(d) {
                     let selected = this.getAttribute("selected") === "true";
-                    if (selected) (0, _network.isolateDevice)(this.getAttribute("ip"));
+                    if (selected) {
+                        let selectedIP = this.getAttribute("ip");
+                        (0, _network.isolateDevice)(selectedIP);
+                    }
                     return selected;
-                }).transition().duration(duration).attr("fill", "darkgrey").attr("isolated", "true");
+                }).transition().duration(duration).attr("fill", nodeIsolated).attr("isolated", "true");
                 break;
             case "Enter":
-                graphSvg.selectAll(shape).filter(function(d) {
+                graphSvg.selectAll("circle").filter(function(d) {
                     let selected = this.getAttribute("selected") === "true";
-                    if (selected) (0, _network.includeDevice)(this.getAttribute("ip"));
+                    if (selected) {
+                        let selectedIP = this.getAttribute("ip");
+                        (0, _network.includeDevice)(selectedIP);
+                    }
                     return selected;
-                }).transition().duration(duration).attr("r", selectedRadius).attr("fill", (node)=>node.reachable ? "#3BD16F" : "#F03A47").attr("isolated", "true");
+                }).transition().duration(duration).attr("r", selectedRadius).attr("fill", nodeHighlighted).attr("isolated", "false");
                 break;
         }
     }
     function clearSelection() {
         // Clear nodes
-        graphSvg.selectAll(shape).transition().duration(duration).attr("r", unselectedRadius).attr("fill", (node)=>node.reachable ? nodeReachable : nodeUnreachable).attr("selected", "false");
+        graphSvg.selectAll("circle").filter(function() {
+            return this.getAttribute("isolated") === "false";
+        }).transition().duration(duration).attr("r", unselectedRadius).attr("fill", (node)=>node.reachable ? nodeReachable : nodeUnreachable).attr("selected", "false");
+        graphSvg.selectAll("circle").filter(function() {
+            return this.getAttribute("isolated") === "true";
+        }).transition().duration(duration).attr("r", unselectedRadius).attr("selected", "false");
         graphSvg.transition().duration(duration).select("circle[ip='" + openWrtIP + "']").attr("r", unselectedRadius).attr("fill", openWrtColor);
         // Clear links
         graphSvg.selectAll("line").transition().duration(duration).style("stroke", linkDefault).attr("stroke-width", linkWidthDefault).attr("marked", "false");
@@ -25601,7 +25614,7 @@ async function generateSvg(htmlSource, config, devices) {
         //     console.error('Error generating the connections:', error);
         // }
         // Highlight nodes
-        graphSvg.selectAll(shape).filter(function() {
+        graphSvg.selectAll("circle").filter(function() {
             return linkedIPs.includes(this.getAttribute("ip"));
         }).transition().duration(duration).attr("r", communicatedRadius).attr("fill", nodeHighlighted);
         // Highlight links
@@ -25639,13 +25652,15 @@ parcelHelpers.export(exports, "getCommunicationsStatic", ()=>getCommunicationsSt
 parcelHelpers.export(exports, "getDevices", ()=>getDevices);
 // Retrieve communications from OVS
 parcelHelpers.export(exports, "getCommunications", ()=>getCommunications);
+// Retrieve isolated devices from the router
+parcelHelpers.export(exports, "getIsolatedDevices", ()=>getIsolatedDevices);
 // Sends a api-request to isolate the device with the given ip from the network.
 parcelHelpers.export(exports, "isolateDevice", ()=>isolateDevice);
 // Sends a api-request to remove the isolation of the device with the given ip.
 parcelHelpers.export(exports, "includeDevice", ()=>includeDevice);
-var _devicesJson = require("./example/devices.json");
+var _devicesJson = require("./demo/devices.json");
 var _devicesJsonDefault = parcelHelpers.interopDefault(_devicesJson);
-var _communicationsJson = require("./example/communications.json");
+var _communicationsJson = require("./demo/communications.json");
 var _communicationsJsonDefault = parcelHelpers.interopDefault(_communicationsJson);
 function getDevicesStatic() {
     let deviceList = [];
@@ -25682,7 +25697,7 @@ function getDevices() {
             "12:34:45:67:89",
             "true",
             "192.168.1.1"
-        ];
+        ]; //ToDo
         processedDeviceList.push(sourceNode);
         for (let device of deviceList){
             let deviceEntry = [
@@ -25719,17 +25734,39 @@ function getCommunications() {
         return communicationList;
     });
 }
+function getIsolatedDevices() {
+    return fetch("http://localhost:5000/isolated_devices").then((response)=>response.json()).then((deviceList)=>{
+        let isolatedDeviceList = deviceList.map((device)=>device.ip);
+        return isolatedDeviceList;
+    }).catch((error)=>{
+        // Handle any errors that occur during the request
+        console.error("Error:", error);
+        return [];
+    });
+}
 function isolateDevice(selectedIP) {
     console.log(selectedIP + " is now isolated from the network.");
+    return fetch("http://localhost:5000/isolate/" + selectedIP, {
+        method: "POST"
+    }).then((response)=>response.json()).catch((error)=>{
+        // Handle any errors that occur during the request
+        console.error("Error:", error);
+    });
 }
 function includeDevice(selectedIP) {
     console.log(selectedIP + " is no longer isolated.");
+    return fetch("http://localhost:5000/include/" + selectedIP, {
+        method: "POST"
+    }).then((response)=>response.json()).catch((error)=>{
+        // Handle any errors that occur during the request
+        console.error("Error:", error);
+    });
 }
 
-},{"./example/devices.json":"apQ7d","./example/communications.json":"hX0uw","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"apQ7d":[function(require,module,exports) {
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./demo/devices.json":"jRDO7","./demo/communications.json":"azGuA"}],"jRDO7":[function(require,module,exports) {
 module.exports = JSON.parse('[{"dev":"br0","stale":true,"mac":"1a:2b:3c:4d:5e:6f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.1","hostname":"OpenWRT","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"3e:8b:9e:ad:be:cf","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.2","hostname":"Switch_2","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"da:eb:fc:1d:2e:3f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.3","hostname":"Switch_3","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"4a:5b:6c:7d:8e:9f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.4","hostname":"Switch_4","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"af:be:ca:fe:b0:0b","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.50","hostname":"Laptop","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"1f:2e:3d:4c:5b:6a","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.51","hostname":"Android Phone","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"cc:dd:ee:ff:aa:bb","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.52","hostname":"Drucker","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"1b:2c:3d:4e:5f:6a","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.53","hostname":"Home Assistant","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"ab:cd:ef:12:34:56","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.60","hostname":"Lampe_0","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"12:34:56:ab:cd:ef","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.61","hostname":"Lampe_1","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"ab:cd:ef:12:34:56","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.62","hostname":"Lampe_2","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"1a:2b:3c:4d:5e:6f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.63","hostname":"Lampe_3","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"7a:8b:9c:ad:be:cf","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.64","hostname":"Lampe_4","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"da:eb:fc:1d:2e:3f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.65","hostname":"Lampe_5","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"4a:5b:6c:7d:8e:9f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.70","hostname":"Sensor_0","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"af:be:ca:fe:b0:0b","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.71","hostname":"Sensor_1","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"1f:2e:3d:4c:5b:6a","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.72","hostname":"Sensor_2","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.73","hostname":"Sensor_3","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.74","hostname":"Sensor_4","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.75","hostname":"Sensor_5","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.101","hostname":"Isolated_0","host":"192.168.1.4"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.102","hostname":"Isolated_1","host":"192.168.1.4"}]');
 
-},{}],"hX0uw":[function(require,module,exports) {
+},{}],"azGuA":[function(require,module,exports) {
 module.exports = JSON.parse('{"flow_table":[{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.2"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.3"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.4"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.3","ipv4_dst":"192.168.1.4"},"actions":["allow_packet"]}]}');
 
 },{}],"87WFb":[function(require,module,exports) {
@@ -25761,7 +25798,7 @@ class NetworkVisualizationEditor extends (0, _lit.LitElement) {
     render() {
         return (0, _lit.html)`
       <form class="table" id="editor-table>
-        <h3>General</h3>
+      <h3>General:</h3>
         <div class="row">
           <label class="label cell" for="header">Header:</label>
           <input
@@ -25770,14 +25807,7 @@ class NetworkVisualizationEditor extends (0, _lit.LitElement) {
           ></input>
         </div>
         <div class="row">
-        <label class="label cell" for="openWrtIP">OpenWrt IP:</label>
-        <input
-          @change="${this.handleChangedEvent}"
-          class="value cell" id="openWrtIP" value="${this._config.openWrtIP}"
-        ></input>
-      </div>
-        <div class="row">
-          <label class="label cell" for="renderInterval">Render Interval in ms:</label>
+          <label class="label cell" for="renderInterval">Render Interval in sec:</label>
           <input
             @change="${this.handleChangedEvent}"
             class="value cell" id="renderInterval" value="${this._config.renderInterval}"
@@ -25791,22 +25821,41 @@ class NetworkVisualizationEditor extends (0, _lit.LitElement) {
           ></input>
         </div>
         <div class="row">
-          <label class="label cell" for="duration">Animation Duration:</label>
+          <label class="label cell" for="duration">Animation Duration in ms:</label>
           <input
             @change="${this.handleChangedEvent}"
             class="value cell" id="duration" value="${this._config.duration}"
           ></input>
         </div>
+
+        <h3>Network:</h3>
         <div class="row">
-          <label class="label cell" for="isDemo">Demo Network:</label>
-          <input type="checkbox"
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="isDemo"
-            ?checked="${this._config.isDemo}"
-          ></input>
-          <span class="slider round"></span>
-          </label>
-        </div>
+        <label class="label cell" for="openWrtIP">OpenWrt IP:</label>
+        <input
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="openWrtIP" value="${this._config.openWrtIP}"
+        ></input>
+      </div>
+      <div class="row">
+      <label class="label cell" for="mode">Network Mode:</label>
+      <select
+        id="mode"
+        class="value cell"
+        @change="${this.handleChangedEvent}">
+        <option value="software" ?selected="${this._config.mode === "software"}">Software</option>
+        <option value="physical" ?selected="${this._config.mode === "physical"}">Physical</option>
+      </select>
+      </div>
+      <div class="row">
+        <label class="label cell" for="isDemo">Demo Network:</label>
+        <input type="checkbox"
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="isDemo"
+          ?checked="${this._config.isDemo}"
+        ></input>
+        <span class="slider round"></span>
+        </label>
+      </div>
 
         <h3>Color:</h3>
         <div class="row">
@@ -25837,6 +25886,13 @@ class NetworkVisualizationEditor extends (0, _lit.LitElement) {
             class="value cell" id="nodeHighlighted" value="${this._config.nodeHighlighted}"
           ></input>
         </div>
+        <div class="row">
+        <label class="label cell" for="nodeIsolated">Node Isolated Color:</label>
+        <input
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="nodeIsolated" value="${this._config.nodeIsolated}"
+        ></input>
+      </div>
         <div class="row">
           <label class="label cell" for="rowDefault">Row Default Color:</label>
           <input
@@ -25943,6 +25999,9 @@ class NetworkVisualizationEditor extends (0, _lit.LitElement) {
             case "openWrtIP":
                 newConfig.openWrtIP = target.value;
                 break;
+            case "mode":
+                newConfig.mode = target.value;
+                break;
             case "isDemo":
                 newConfig.isDemo = target.checked;
                 break;
@@ -25966,6 +26025,9 @@ class NetworkVisualizationEditor extends (0, _lit.LitElement) {
                 break;
             case "nodeHighlighted":
                 newConfig.nodeHighlighted = target.value;
+                break;
+            case "nodeIsolated":
+                newConfig.nodeIsolated = target.value;
                 break;
             case "rowDefault":
                 newConfig.rowDefault = target.value;

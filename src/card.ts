@@ -52,6 +52,7 @@ export class NetworkVisualization extends LitElement {
     };
   }
 
+  // Render the card
   public render(): TemplateResult {
     const content: TemplateResult = html`
       <div class="card-container">
