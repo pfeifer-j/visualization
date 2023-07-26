@@ -13,22 +13,7 @@ import { getCommunicationsStatic } from "./network";
 // Generate the view and update it after a set interval if the device list has changed
 export async function generateView(htmlSource, config) {
     const devices = config.isDemo ? await getDevicesStatic() : await getDevices();
-
     generateSvg(htmlSource, config, devices);
-
-    setInterval(() => {
-        updateGraph(htmlSource, config, devices);
-    }, config.renderInterval || 60000); // 60 seconds is the default
-}
-
-// Function to check for changes in the devices list and update the graph if needed
-async function updateGraph(htmlSource, config, devices) {
-    const newDevices = config.isDemo ? await getDevicesStatic() : await getDevices();
-
-    if (JSON.stringify(devices) !== JSON.stringify(newDevices)) {
-        devices = newDevices;
-        generateSvg(htmlSource, config, devices);
-    }
 }
 
 // Initialize the d3.js visualization
@@ -69,9 +54,12 @@ export async function generateSvg(htmlSource, config, devices) {
     };
 
     try {
-        // Generate device nodes
         devices.forEach((device) => {
-            let [hostname, ip, mac, reachable, host] = device;
+            let hostname = device.hostname;
+            let ip = device.ip;
+            let mac = device.mac;
+            let reachable = device.reachable;
+            let host = device.host;
 
             data.nodes.push({
                 host: host,
@@ -97,8 +85,8 @@ export async function generateSvg(htmlSource, config, devices) {
                 graphSvg.attr("transform", event.transform);
             })
         )
-        .on("dblclick.zoom", null)
-        .append("g");
+        .on("dblclick.zoom", null);
+    // .attr("viewBox", [-graphWidth / 2, -graphHeight / 2, graphWidth, graphHeight]);
 
     // Clear existing visualisation in the graph
     clearExistingVisualization(graphElement, "circle");
@@ -118,9 +106,10 @@ export async function generateSvg(htmlSource, config, devices) {
     // Read isolated devices
     let isolatedDevices = await getIsolatedDevices();
 
+
     // Fill graph with data
-    let links = graphSvg
-        .append("g")
+    let linkGroup = graphSvg.append('g');
+    let links = linkGroup
         .selectAll("line")
         .data(data.links)
         .enter()
@@ -131,8 +120,8 @@ export async function generateSvg(htmlSource, config, devices) {
         .attr("stroke-width", linkWidthDefault)
         .attr("marked", "false");
 
-    let nodes = graphSvg
-        .append("g")
+    let nodeGroup = graphSvg.append('g');
+    let nodes = nodeGroup
         .selectAll("circle")
         .data(data.nodes)
         .enter()
@@ -162,6 +151,9 @@ export async function generateSvg(htmlSource, config, devices) {
         .force("x", d3.forceX().x((d) => Math.max(0, Math.min(graphWidth, d.x))).strength(0.1))
         .force("y", d3.forceY().y((d) => Math.max(0, Math.min(graphHeight, d.y))).strength(0.1))
         .on("tick", ticked);
+
+    simulation.alpha(1);
+    for (var i = 0; i < 50; ++i) simulation.tick();
 
     let drag = d3
         .drag()
@@ -205,6 +197,29 @@ export async function generateSvg(htmlSource, config, devices) {
         d.fx = null;
         d.fy = null;
     }
+
+    // invalidation.then(() => simulation.stop());
+    // return Object.assign(graphSvg.node(), {
+    //     update(newData) {
+    //         const old = new Map(node.data().map(d => [d.ip, d]));
+    //         data.nodes = newData.nodes.map(d => Object.assign(old.get(d.ip) || {}, d));
+    //         data.links = newData.links.map(d => Object.assign({}, d));
+
+    //         simulation.nodes(data.nodes);
+    //         simulation.force("link").links(data.links);
+    //         simulation.alpha(1).restart();
+
+    //         node = node
+    //             .data(data.nodes, d => d.ip)
+    //             .join(enter => enter.append("circle")
+    //                 .attr("r", 8)
+    //                 .attr("fill", d => color(d.ip)));  // Replace color(d.ip) with your desired color function
+
+    //         link = link
+    //             .data(data.links, d => `${d.source.ip}\t${d.target.ip}`)
+    //             .join("line");
+    //     }
+    // });
 
     // Generate table
     let tableSelector = "#tableSvg";
@@ -292,6 +307,12 @@ export async function generateSvg(htmlSource, config, devices) {
         .on("mouseover", handleMouseOver)
         .on("mouseout", handleMouseOut)
         .on("click", handleClick);
+
+
+    // Update the graph within a set interval
+    setInterval(() => {
+        updateGraph();
+    }, config.renderInterval || 15000);
 
     function handleMouseOver(event, element) {
         let selectedIP = getIP(element);
@@ -486,8 +507,12 @@ export async function generateSvg(htmlSource, config, devices) {
             .style("color", fontDefault);
     }
 
+    // Renders the network flow between devices
     async function showCommunication(selectedIP) {
-        let communications = getCommunicationsStatic;
+        //let communications = config.isDemo ? await getCommunicationsStatic() : await getCommunications();
+
+        let communications = await getCommunicationsStatic();
+
         let linkedIPs = [];
 
         // try {
@@ -556,5 +581,118 @@ export async function generateSvg(htmlSource, config, devices) {
     function clearExistingVisualization(svgElement, elementSelector) {
         const svg = d3.select(svgElement);
         svg.selectAll(elementSelector).remove();
+    }
+
+    // Update the graph after a set interval
+    async function updateGraph() {
+        // Only update if the devices have changed.
+        const newDevices = config.isDemo ? await getDevicesStatic() : await getDevices();
+        if (JSON.stringify(devices) === JSON.stringify(newDevices)) {
+            return;
+        }
+
+        // Save the current selections and positions.
+        let selections = new Map();
+        let positions = new Map();
+        nodes.each(function (d) {
+            selections.set(d.ip, this.getAttribute("selected"));
+            positions.set(d.ip, { x: d.x, y: d.y });
+        });
+
+        // Update the device information
+        devices = newDevices;
+        data.nodes = devices.map(device => {
+            let hostname = device.hostname;
+            let ip = device.ip;
+            let mac = device.mac;
+            let reachable = device.reachable;
+            let host = device.host;
+
+            return {
+                host: host,
+                name: hostname,
+                ip: ip,
+                mac: mac,
+                reachable: reachable,
+            }
+        });
+
+        // Re-calculate the links based on the new devices array
+        data.links = devices.map(device => {
+            return { source: device.host, target: device.ip, marked: false };
+        });
+
+        // Rebind the new data
+        nodes = nodeGroup.selectAll("circle").data(data.nodes, d => d.ip);
+        links = linkGroup.selectAll("line").data(data.links, d => d.source.ip + "-" + d.target.ip);
+
+        // Remove old nodes
+        nodes.exit().remove();
+        links.exit().remove();
+
+        // Update existing nodes
+        nodes
+            .attr("fill", (node) => isolatedDevices.includes(node.ip) ? nodeIsolated : (node.reachable ? nodeReachable : nodeUnreachable));
+
+        // Create new nodes
+        const newNodes = nodes.enter().append("circle");
+        newNodes.attr("r", unselectedRadius)
+        nodes.attr("fill", (node) => {
+            // Retrieve the selected attribute
+            let isSelected = d3.select(`circle[ip='${node.ip}']`).attr("selected") === "true";
+
+            // Return color based on conditions
+            return isSelected ? nodeHighlighted
+                : (isolatedDevices.includes(node.ip) ? nodeIsolated
+                    : (node.reachable ? nodeReachable
+                        : nodeUnreachable))
+        })
+            .attr("name", (node) => node.name)
+            .attr("ip", (node) => node.ip)
+            .attr("mac", (node) => node.mac)
+            .attr("host", (node) => node.host)
+            .attr("reachable", (node) => node.reachable)
+            .attr("selected", (node) => selections.get(node.ip) || false)
+            .attr("isolated", (node) => isolatedDevices.includes(node.ip))
+            .attr("cx", (node) => positions.has(node.ip) ? positions.get(node.ip).x : graphWidth / 2)
+            .attr("cy", (node) => positions.has(node.ip) ? positions.get(node.ip).y : graphHeight / 2)
+            .on("mouseover", handleMouseOver)
+            .on("mouseout", handleMouseOut)
+            .on("click", handleClick);
+
+        // Mark source node
+        graphSvg
+            .select("circle[ip='" + openWrtIP + "']")
+            .attr("fill", openWrtColor);
+
+        // Merge the new nodes with the existing nodes
+        nodes = newNodes.merge(nodes);
+
+        // Create new links
+        let newLinks = links.enter().append("line");
+
+        newLinks.attr("source", (link) => link.source)
+            .attr("target", (link) => link.target)
+            .style("stroke", linkDefault)
+            .attr("stroke-width", linkWidthDefault)
+            .attr("marked", "false");
+
+        // Merge the new links with the existing links
+        links = newLinks.merge(links);
+
+        // Restart the simulation with the new data
+        simulation.nodes(data.nodes.concat(newNodes.data()));
+        simulation.force("link").links(data.links);
+        simulation.alpha(1).restart();
+        simulation.alpha(1);
+        for (var i = 0; i < 120; ++i) simulation.tick();
+
+        nodes.attr("cx", function (d) { return d.x; })
+            .attr("cy", function (d) { return d.y; });
+
+        links.attr("x1", function (d) { return d.source.x; })
+            .attr("y1", function (d) { return d.source.y; })
+            .attr("x2", function (d) { return d.target.x; })
+            .attr("y2", function (d) { return d.target.y; });
     }
 }

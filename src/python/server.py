@@ -52,6 +52,7 @@ def get_devices():
     try:
         router = OpenWrtRpc(ROUTER_IP, ROUTER_USER, ROUTER_PASSWORD)
         result = router.get_all_connected_devices(only_reachable=False)
+        print(dir(router))
 
         device_list = [device._asdict() for device in result]
         return jsonify(device_list)

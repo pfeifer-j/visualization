@@ -7,27 +7,27 @@ export function getDevicesStatic() {
     let deviceList = [];
 
     for (let device of deviceData) {
-        let deviceEntry = [
-            device.hostname,
-            device.ip,
-            device.mac,
-            device.reachable,
-            device.host
-        ];
+        let deviceEntry = {
+            hostname: device.hostname,
+            ip: device.ip,
+            mac: device.mac,
+            reachable: device.reachable,
+            host: device.host
+        };
         deviceList.push(deviceEntry);
     }
     return deviceList;
 }
 
-// Return the communicationss from the example-json
+// Return the communications from the example-json
 export function getCommunicationsStatic() {
     let communicationList = [];
 
     for (let communication of communicationData.flow_table) {
-        let communicationEntry = [
-            communication.match.ipv4_src,
-            communication.match.ipv4_dst,
-        ];
+        let communicationEntry = {
+            src: communication.match.ipv4_src,
+            dst: communication.match.ipv4_dst,
+        };
         communicationList.push(communicationEntry);
     }
     return communicationList;
@@ -39,30 +39,32 @@ export function getDevices() {
     return fetch('http://localhost:5000/devices')
         .then(response => response.json())
         .then(deviceList => {
-            // Process the deviceList as needed
-
-            let sourceNode = ["OpenWrt", "192.168.1.1", "12:34:45:67:89", "true", "192.168.1.1"]; //ToDo
+            let sourceNode = {
+                hostname: "OpenWrt",
+                ip: "192.168.1.1",
+                mac: "12:34:45:67:89",
+                reachable: "true",
+                host: "192.168.1.1"
+            };
             processedDeviceList.push(sourceNode)
 
             for (let device of deviceList) {
-                let deviceEntry = [
-                    device.hostname,
-                    device.ip,
-                    device.mac,
-                    device.reachable,
-                    device.host
-                ];
+                let deviceEntry = {
+                    hostname: device.hostname,
+                    ip: device.ip,
+                    mac: device.mac,
+                    reachable: device.reachable,
+                    host: device.host
+                };
                 processedDeviceList.push(deviceEntry);
             }
             return processedDeviceList;
         })
         .catch(error => {
-            // Handle any errors that occur during the request
             console.error('Error:', error);
             return processedDeviceList;
         });
 }
-
 
 
 // Retrieve communications from OVS
