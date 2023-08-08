@@ -69,7 +69,7 @@
     "incomplete": false,
     "ip": "192.168.1.4",
     "hostname": "Switch_4",
-    "host": "192.168.1.1"
+    "host": "192.168.1.3"
   },
   {
     "dev": "br0",
@@ -159,7 +159,7 @@
     "incomplete": false,
     "ip": "192.168.1.60",
     "hostname": "Lampe_0",
-    "host": "192.168.1.1"
+    "host": "192.168.1.2"
   },
   {
     "dev": "br0",
@@ -177,7 +177,7 @@
     "incomplete": false,
     "ip": "192.168.1.61",
     "hostname": "Lampe_1",
-    "host": "192.168.1.1"
+    "host": "192.168.1.2"
   },
   {
     "dev": "br0",
@@ -195,7 +195,7 @@
     "incomplete": false,
     "ip": "192.168.1.62",
     "hostname": "Lampe_2",
-    "host": "192.168.1.1"
+    "host": "192.168.1.2"
   },
   {
     "dev": "br0",
@@ -213,7 +213,7 @@
     "incomplete": false,
     "ip": "192.168.1.63",
     "hostname": "Lampe_3",
-    "host": "192.168.1.1"
+    "host": "192.168.1.2"
   },
   {
     "dev": "br0",
@@ -231,7 +231,7 @@
     "incomplete": false,
     "ip": "192.168.1.64",
     "hostname": "Lampe_4",
-    "host": "192.168.1.1"
+    "host": "192.168.1.2"
   },
   {
     "dev": "br0",
@@ -249,7 +249,7 @@
     "incomplete": false,
     "ip": "192.168.1.65",
     "hostname": "Lampe_5",
-    "host": "192.168.1.1"
+    "host": "192.168.1.2"
   },
   {
     "dev": "br0",
@@ -267,7 +267,7 @@
     "incomplete": false,
     "ip": "192.168.1.70",
     "hostname": "Sensor_0",
-    "host": "192.168.1.1"
+    "host": "192.168.1.3"
   },
   {
     "dev": "br0",
@@ -285,7 +285,7 @@
     "incomplete": false,
     "ip": "192.168.1.71",
     "hostname": "Sensor_1",
-    "host": "192.168.1.1"
+    "host": "192.168.1.3"
   },
   {
     "dev": "br0",
@@ -303,7 +303,7 @@
     "incomplete": false,
     "ip": "192.168.1.72",
     "hostname": "Sensor_2",
-    "host": "192.168.1.1"
+    "host": "192.168.1.3"
   },
   {
     "dev": "br0",
@@ -321,7 +321,7 @@
     "incomplete": false,
     "ip": "192.168.1.73",
     "hostname": "Sensor_3",
-    "host": "192.168.1.1"
+    "host": "192.168.1.3"
   },
   {
     "dev": "br0",
@@ -339,7 +339,7 @@
     "incomplete": false,
     "ip": "192.168.1.74",
     "hostname": "Sensor_4",
-    "host": "192.168.1.1"
+    "host": "192.168.1.3"
   },
   {
     "dev": "br0",
@@ -357,7 +357,7 @@
     "incomplete": false,
     "ip": "192.168.1.75",
     "hostname": "Sensor_5",
-    "host": "192.168.1.1"
+    "host": "192.168.1.3"
   },
   {
     "dev": "br0",
@@ -375,7 +375,7 @@
     "incomplete": false,
     "ip": "192.168.1.101",
     "hostname": "Isolated_0",
-    "host": "192.168.1.1"
+    "host": "192.168.1.4"
   },
   {
     "dev": "br0",
@@ -393,6 +393,6 @@
     "incomplete": false,
     "ip": "192.168.1.102",
     "hostname": "Isolated_1",
-    "host": "192.168.1.1"
+    "host": "192.168.1.4"
   }
 ]

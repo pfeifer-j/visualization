@@ -1,12 +1,30 @@
-import deviceData from './demo/devices.json';
-import communicationData from "./demo/communications.json";
-import isolatedData from "./demo/isolated_devices.json";
+import deviceData from './data/devices.json';
+import sdnData from './data/devices_sdn.json';
+import communicationData from "./data/communications.json";
+import isolatedData from "./data/isolated_devices.json";
 
 // Return the devices from the example-json
 export function getDevicesStatic() {
     let deviceList = [];
 
     for (let device of deviceData) {
+        let deviceEntry = {
+            hostname: device.hostname,
+            ip: device.ip,
+            mac: device.mac,
+            reachable: device.reachable,
+            host: device.host
+        };
+        deviceList.push(deviceEntry);
+    }
+    return deviceList;
+}
+
+// Return the devices from the example-json
+export function getDevicesSDN() {
+    let deviceList = [];
+
+    for (let device of sdnData) {
         let deviceEntry = {
             hostname: device.hostname,
             ip: device.ip,

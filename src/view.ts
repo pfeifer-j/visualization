@@ -1,6 +1,7 @@
 import * as d3 from "d3";
 // Live Imports
 import { getDevices } from "./network";
+import { getDevicesSDN } from "./network";
 import { getIsolatedDevices } from "./network";
 import { getCommunications } from "./network";
 import { isolateDevice } from "./network";
@@ -10,14 +11,8 @@ import { includeDevice } from "./network";
 import { getDevicesStatic } from "./network";
 import { getCommunicationsStatic } from "./network";
 
-// Generate the view and update it after a set interval if the device list has changed
-export async function generateView(htmlSource, config) {
-    const devices = config.isDemo ? await getDevicesStatic() : await getDevices();
-    generateSvg(htmlSource, config, devices);
-}
-
 // Initialize the d3.js visualization
-export async function generateSvg(htmlSource, config, devices) {
+export async function generateView(htmlSource, config) {
 
     // Visualisation constants and default settings
     const graphWidth = 500;
@@ -43,6 +38,7 @@ export async function generateSvg(htmlSource, config, devices) {
     const openWrtColor = config.openWrtColor || "lightblue";
     const graphForce = config.graphForce || -300;
     const duration = config.duration || 200;
+    const mode = config.mode || "physical";
 
     //ToDo: Implement multiple shapes
     const shape = "circle"; //config.shape || "circle";
@@ -52,6 +48,10 @@ export async function generateSvg(htmlSource, config, devices) {
         nodes: [],
         links: [],
     };
+
+
+    // Select the correct devices to be displayed
+    let devices = await (!config.isDemo ? getDevices() : (config.mode == "software" ? getDevicesSDN() : getDevicesStatic()));
 
     try {
         devices.forEach((device) => {
@@ -85,8 +85,8 @@ export async function generateSvg(htmlSource, config, devices) {
                 graphSvg.attr("transform", event.transform);
             })
         )
-        .on("dblclick.zoom", null);
-    // .attr("viewBox", [-graphWidth / 2, -graphHeight / 2, graphWidth, graphHeight]);
+        .on("dblclick.zoom", null)
+        .append("g");
 
     // Clear existing visualisation in the graph
     clearExistingVisualization(graphElement, "circle");
@@ -108,8 +108,8 @@ export async function generateSvg(htmlSource, config, devices) {
 
 
     // Fill graph with data
-    let linkGroup = graphSvg.append('g');
-    let links = linkGroup
+    let links = graphSvg
+        .append("g")
         .selectAll("line")
         .data(data.links)
         .enter()
@@ -120,8 +120,7 @@ export async function generateSvg(htmlSource, config, devices) {
         .attr("stroke-width", linkWidthDefault)
         .attr("marked", "false");
 
-    let nodeGroup = graphSvg.append('g');
-    let nodes = nodeGroup
+    let nodes = graphSvg.append('g')
         .selectAll("circle")
         .data(data.nodes)
         .enter()
@@ -310,9 +309,9 @@ export async function generateSvg(htmlSource, config, devices) {
 
 
     // Update the graph within a set interval
-    setInterval(() => {
-        updateGraph();
-    }, config.renderInterval || 15000);
+    // setInterval(() => {
+    //     updateGraph();
+    // }, config.renderInterval || 15000);
 
     function handleMouseOver(event, element) {
         let selectedIP = getIP(element);
@@ -430,7 +429,17 @@ export async function generateSvg(htmlSource, config, devices) {
                         let selected = this.getAttribute("selected") === "true";
                         if (selected) {
                             let selectedIP = this.getAttribute("ip");
-                            isolateDevice(selectedIP);
+
+                            // Error handling for isolation OpenWRT
+                            if (selectedIP == openWrtIP) {
+                                window.confirm("You cant isolate the source node!");
+                            }
+
+                            // Confirm dialog for isolation
+                            let confirmDelete = window.confirm("Are you sure you want to isolate " + selectedIP + "?");
+                            if (confirmDelete) {
+                                isolateDevice(selectedIP);
+                            }
                         }
                         return selected;
                     })
@@ -444,9 +453,14 @@ export async function generateSvg(htmlSource, config, devices) {
                 graphSvg.selectAll("circle")
                     .filter(function (d) {
                         let selected = this.getAttribute("selected") === "true";
+
+                        // Confirm dialog for including devices
                         if (selected) {
                             let selectedIP = this.getAttribute("ip");
-                            includeDevice(selectedIP);
+                            let confirmDelete = window.confirm("Are you sure you want to include " + selectedIP + "?");
+                            if (confirmDelete) {
+                                includeDevice(selectedIP);
+                            }
                         }
                         return selected;
                     })
@@ -509,28 +523,28 @@ export async function generateSvg(htmlSource, config, devices) {
 
     // Renders the network flow between devices
     async function showCommunication(selectedIP) {
-        //let communications = config.isDemo ? await getCommunicationsStatic() : await getCommunications();
+        let communications = config.isDemo ? await getCommunicationsStatic() : await getCommunications();
 
-        let communications = await getCommunicationsStatic();
+        console.log(communications);
 
         let linkedIPs = [];
 
-        // try {
-        //     communications = await getCommunications();
+        try {
+            // Get the connected IP's
+            communications.forEach(function (communication) {
+                console.log(communication);
+                if (communication.src === selectedIP) {
+                    linkedIPs.push(communication.dst);
+                } else if (communication.dst === selectedIP) {
+                    linkedIPs.push(communication.src);
+                }
+            });
 
-        //     // Get the connected IP's
-        //     communications.forEach(function (communication) {
-        //         if (communication[0] === selectedIP) {
-        //             linkedIPs.push(communication[1]);
-        //         } else if (communication[1] === selectedIP) {
-        //             linkedIPs.push(communication[0]);
-        //         }
-        //     });
+            console.log(linkedIPs);
 
-        //     // Rest of your code to highlight nodes and links
-        // } catch (error) {
-        //     console.error('Error generating the connections:', error);
-        // }
+        } catch (error) {
+            console.error('Error generating the connections:', error);
+        }
 
         // Highlight nodes
         graphSvg
@@ -544,24 +558,24 @@ export async function generateSvg(htmlSource, config, devices) {
             .attr("fill", nodeHighlighted);
 
         // Highlight links
-        graphSvg
-            .selectAll("line")
-            .filter(function (line) {
-                let sourceIP = line.source.ip;
-                let targetIP = line.target.ip;
+        // graphSvg
+        //     .selectAll("line")
+        //     .filter(function (line) {
+        //         let sourceIP = line.source.ip;
+        //         let targetIP = line.target.ip;
 
-                // Check if the link is part of the shortest path
-                let isPartOfShortestPath = linkedIPs.includes(sourceIP) && linkedIPs.includes(targetIP);
+        //         // Check if the link is part of the shortest path
+        //         let isPartOfShortestPath = linkedIPs.includes(sourceIP) && linkedIPs.includes(targetIP);
 
-                // Check if the link is the selected IP or connected to it
-                let isConnectedToSelectedIP = sourceIP === selectedIP || targetIP === selectedIP;
+        //         // Check if the link is the selected IP or connected to it
+        //         let isConnectedToSelectedIP = sourceIP === selectedIP || targetIP === selectedIP;
 
-                return isPartOfShortestPath || isConnectedToSelectedIP;
-            })
-            .transition()
-            .duration(duration)
-            .style("stroke", linkHighlighted)
-            .attr("stroke-width", linkWidthHighlighted)
+        //         return isPartOfShortestPath || isConnectedToSelectedIP;
+        //     })
+        //     .transition()
+        //     .duration(duration)
+        //     .style("stroke", linkHighlighted)
+        //     .attr("stroke-width", linkWidthHighlighted)
     }
 
     // Returns the IP of a node or a row

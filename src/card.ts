@@ -49,6 +49,29 @@ export class NetworkVisualization extends LitElement {
   public static getStubConfig(): Record<string, unknown> {
     return {
       header: "My Network:",
+      type: "custom: network- visualization",
+      renderInterval: 15000,
+      graphForce: -300,
+      duration: 200,
+      openWrtIP: "192.168.1.1",
+      isDemo: false,
+      mode: "physical",
+      openWrtColor: "lightblue",
+      nodeReachable: "green",
+      nodeUnreachable: "red",
+      nodeHighlighted: "orange",
+      nodeIsolated: "gray",
+      rowDefault: "transparent",
+      rowSelected: "white",
+      fontDefault: "white",
+      fontSelected: "black",
+      linkDefault: "gray",
+      linkHighlighted: "orange",
+      unselectedRadius: 10,
+      communicatedRadius: 12,
+      selectedRadius: 15,
+      linkWidthDefault: 1,
+      linkWidthHighlighted: 3,
     };
   }
 

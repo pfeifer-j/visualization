@@ -28,7 +28,7 @@ SWITCH_PORT = "8080"
 
 # Extension for JSON support
 BLOCKED_IPS = []
-BLOCKED_IP_JSON = "src/demo/isolated_devices.json"
+BLOCKED_IP_JSON = "src/data/isolated_devices.json"
 
 
 def save_ips_to_file(ip_list, filename):
@@ -47,6 +47,21 @@ def load_ips_from_file(filename):
 
 
 @app.route("/devices")
+def get_devices():
+    """Retrieves a list of all connected devices."""
+    try:
+        router = OpenWrtRpc(ROUTER_IP, ROUTER_USER, ROUTER_PASSWORD)
+        result = router.get_all_connected_devices(only_reachable=False)
+        print(dir(router))
+
+        device_list = [device._asdict() for device in result]
+        return jsonify(device_list)
+    except Exception as error:
+        print(f"Failed to retrieve devices: {str(error)}")
+        return jsonify({"error": str(error)}), 500
+
+
+@app.route("/devices-sdn")
 def get_devices():
     """Retrieves a list of all connected devices."""
     try:
