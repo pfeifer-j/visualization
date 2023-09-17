@@ -91,6 +91,7 @@ export class NetworkVisualization extends LitElement {
     // Graph
     const graphId = 'graphSvg';
     const graphSelector = `#${graphId}`;
+    console.log(`Graph render start: ${new Date().getSeconds().toString()} and ${new Date().getMilliseconds().toString()}`);
 
     setTimeout(() => {
       const graphSvg = d3.select(this.renderRoot.querySelector(graphSelector));

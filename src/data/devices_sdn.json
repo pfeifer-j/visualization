@@ -56,24 +56,6 @@
   {
     "dev": "br0",
     "stale": true,
-    "mac": "4a:5b:6c:7d:8e:9f",
-    "noarp": false,
-    "permanent": false,
-    "failed": false,
-    "family": 4,
-    "proxy": false,
-    "router": false,
-    "reachable": true,
-    "probe": false,
-    "delay": false,
-    "incomplete": false,
-    "ip": "192.168.1.4",
-    "hostname": "Switch_4",
-    "host": "192.168.1.3"
-  },
-  {
-    "dev": "br0",
-    "stale": true,
     "mac": "af:be:ca:fe:b0:0b",
     "noarp": false,
     "permanent": false,
@@ -104,7 +86,7 @@
     "delay": false,
     "incomplete": false,
     "ip": "192.168.1.51",
-    "hostname": "Android Phone",
+    "hostname": "Printer",
     "host": "192.168.1.1"
   },
   {
@@ -122,7 +104,7 @@
     "delay": false,
     "incomplete": false,
     "ip": "192.168.1.52",
-    "hostname": "Drucker",
+    "hostname": "Android Phone",
     "host": "192.168.1.1"
   },
   {
@@ -358,41 +340,5 @@
     "ip": "192.168.1.75",
     "hostname": "Sensor_5",
     "host": "192.168.1.3"
-  },
-  {
-    "dev": "br0",
-    "stale": true,
-    "mac": "12:34:56:78:10:12",
-    "noarp": false,
-    "permanent": false,
-    "failed": false,
-    "family": 4,
-    "proxy": false,
-    "router": false,
-    "reachable": true,
-    "probe": false,
-    "delay": false,
-    "incomplete": false,
-    "ip": "192.168.1.101",
-    "hostname": "Isolated_0",
-    "host": "192.168.1.4"
-  },
-  {
-    "dev": "br0",
-    "stale": true,
-    "mac": "12:34:56:78:10:12",
-    "noarp": false,
-    "permanent": false,
-    "failed": false,
-    "family": 4,
-    "proxy": false,
-    "router": false,
-    "reachable": false,
-    "probe": false,
-    "delay": false,
-    "incomplete": false,
-    "ip": "192.168.1.102",
-    "hostname": "Isolated_1",
-    "host": "192.168.1.4"
   }
 ]

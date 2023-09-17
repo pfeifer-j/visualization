@@ -659,6 +659,7 @@ class NetworkVisualization extends (0, _lit.LitElement) {
         // Graph
         const graphId = "graphSvg";
         const graphSelector = `#${graphId}`;
+        console.log(`Graph render start: ${new Date().getSeconds().toString()} and ${new Date().getMilliseconds().toString()}`);
         setTimeout(()=>{
             const graphSvg = _d3.select(this.renderRoot.querySelector(graphSelector));
             if (this._config) (0, _view.generateView)(this, this._config);
@@ -25397,7 +25398,7 @@ async function generateView(htmlSource, config) {
         links: []
     };
     // Select the correct devices to be displayed
-    let devices = await (!config.isDemo ? (0, _network.getDevices)() : config.mode == "software" ? (0, _network.getDevicesSDN)() : (0, _network.getDevicesStatic)());
+    let devices = await (!config.isDemo ? _network.getDevices() : config.mode == "software" ? _network.getDevicesSDN() : (0, _network.getDevicesStatic)());
     try {
         devices.forEach((device)=>{
             let hostname = device.hostname;
@@ -25436,7 +25437,7 @@ async function generateView(htmlSource, config) {
     // Add background to graphSvg
     graphSvg.append("rect").attr("width", graphWidth).attr("height", graphHeight).attr("fill", "transparent").on("click", clearSelection);
     // Read isolated devices
-    let isolatedDevices = await (0, _network.getIsolatedDevices)();
+    let isolatedDevices = await _network.getIsolatedDevices();
     // Fill graph with data
     let links = graphSvg.append("g").selectAll("line").data(data.links).enter().append("line").attr("source", (link)=>link.source).attr("target", (link)=>link.target).style("stroke", linkDefault).attr("stroke-width", linkWidthDefault).attr("marked", "false");
     let nodes = graphSvg.append("g").selectAll("circle").data(data.nodes).enter().append("circle").attr("r", unselectedRadius).attr("fill", (node)=>isolatedDevices.includes(node.ip) ? nodeIsolated : node.reachable ? nodeReachable : nodeUnreachable).attr("name", (node)=>node.name).attr("ip", (node)=>node.ip).attr("mac", (node)=>node.mac).attr("host", (node)=>node.host).attr("reachable", (node)=>node.reachable).attr("selected", false).attr("isolated", (node)=>isolatedDevices.includes(node.ip));
@@ -25448,6 +25449,7 @@ async function generateView(htmlSource, config) {
     for(var i = 0; i < 50; ++i)simulation.tick();
     let drag = _d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended);
     nodes.call(drag);
+    let renderedOnce = false;
     function ticked() {
         nodes.attr("cx", function(d) {
             return d.x;
@@ -25463,6 +25465,11 @@ async function generateView(htmlSource, config) {
         }).attr("y2", function(d) {
             return d.target.y;
         });
+        // If it's the first time the graph has rendered, log the time.
+        if (!renderedOnce) {
+            console.log(`Graph rendered at: $${new Date().getSeconds().toString()} and ${new Date().getMilliseconds().toString()}`);
+            renderedOnce = true;
+        }
     }
     function dragstarted(event, d) {
         simulation.alphaTarget(0.3).restart();
@@ -25602,11 +25609,13 @@ async function generateView(htmlSource, config) {
                     let selected = this.getAttribute("selected") === "true";
                     if (selected) {
                         let selectedIP = this.getAttribute("ip");
+                        let selectedMac = this.getAttribute("mac");
                         // Error handling for isolation OpenWRT
-                        if (selectedIP == openWrtIP) window.confirm("You cant isolate the source node!");
+                        if (selectedIP === openWrtIP) window.confirm("You can't isolate the source node!");
                         // Confirm dialog for isolation
-                        let confirmDelete = window.confirm("Are you sure you want to isolate " + selectedIP + "?");
-                        if (confirmDelete) (0, _network.isolateDevice)(selectedIP);
+                        let confirmDelete = window.confirm(`Are you sure you want to isolate IP: ${selectedIP} and MAC: ${selectedMac}?`);
+                        if (confirmDelete) // network.isolateDeviceByIp(selectedIP);
+                        _network.isolateDeviceByMac(selectedMac);
                     }
                     return selected;
                 }).transition().duration(duration).attr("fill", nodeIsolated).attr("isolated", "true");
@@ -25614,11 +25623,13 @@ async function generateView(htmlSource, config) {
             case "Enter":
                 graphSvg.selectAll("circle").filter(function(d) {
                     let selected = this.getAttribute("selected") === "true";
-                    // Confirm dialog for including devices
                     if (selected) {
                         let selectedIP = this.getAttribute("ip");
-                        let confirmDelete = window.confirm("Are you sure you want to include " + selectedIP + "?");
-                        if (confirmDelete) (0, _network.includeDevice)(selectedIP);
+                        let selectedMac = this.getAttribute("mac"); // Assuming the MAC attribute is named 'mac'
+                        // Confirm dialog for including devices
+                        let confirmInclude = window.confirm(`Are you sure you want to include IP: ${selectedIP} and MAC: ${selectedMac}?`);
+                        if (confirmInclude) // network.includeDeviceByIp(selectedIP);
+                        _network.includeDeviceByMac(selectedMac);
                     }
                     return selected;
                 }).transition().duration(duration).attr("r", selectedRadius).attr("fill", nodeHighlighted).attr("isolated", "false");
@@ -25641,7 +25652,7 @@ async function generateView(htmlSource, config) {
     }
     // Renders the network flow between devices
     async function showCommunication(selectedIP) {
-        let communications = config.isDemo ? await (0, _network.getCommunicationsStatic)() : await (0, _network.getCommunications)();
+        let communications = config.isDemo ? await (0, _network.getCommunicationsStatic)() : await _network.getCommunications();
         console.log(communications);
         let linkedIPs = [];
         try {
@@ -25690,7 +25701,7 @@ async function generateView(htmlSource, config) {
     // Update the graph after a set interval
     async function updateGraph() {
         // Only update if the devices have changed.
-        const newDevices = config.isDemo ? await (0, _network.getDevicesStatic)() : await (0, _network.getDevices)();
+        const newDevices = config.isDemo ? await (0, _network.getDevicesStatic)() : await _network.getDevices();
         if (JSON.stringify(devices) === JSON.stringify(newDevices)) return;
         // Save the current selections and positions.
         let selections = new Map();
@@ -25727,8 +25738,8 @@ async function generateView(htmlSource, config) {
             };
         });
         // Rebind the new data
-        nodes = nodeGroup.selectAll("circle").data(data.nodes, (d)=>d.ip);
-        links = linkGroup.selectAll("line").data(data.links, (d)=>d.source.ip + "-" + d.target.ip);
+        nodes = nodes.selectAll("circle").data(data.nodes, (d)=>d.ip);
+        links = links.selectAll("line").data(data.links, (d)=>d.source.ip + "-" + d.target.ip);
         // Remove old nodes
         nodes.exit().remove();
         links.exit().remove();
@@ -25791,18 +25802,22 @@ parcelHelpers.export(exports, "getCommunications", ()=>getCommunications);
 // Retrieve isolated devices from the router
 parcelHelpers.export(exports, "getIsolatedDevices", ()=>getIsolatedDevices);
 // Sends a api-request to isolate the device with the given ip from the network.
-parcelHelpers.export(exports, "isolateDevice", ()=>isolateDevice);
+parcelHelpers.export(exports, "isolateDeviceByIp", ()=>isolateDeviceByIp);
 // Sends a api-request to remove the isolation of the device with the given ip.
-parcelHelpers.export(exports, "includeDevice", ()=>includeDevice);
-var _devicesJson = require("./data/devices.json");
-var _devicesJsonDefault = parcelHelpers.interopDefault(_devicesJson);
+parcelHelpers.export(exports, "includeDeviceByIp", ()=>includeDeviceByIp);
+// Sends an api-request to isolate the device with the given MAC address from the network.
+parcelHelpers.export(exports, "isolateDeviceByMac", ()=>isolateDeviceByMac);
+// Sends an api-request to remove the isolation of the device with the given MAC address.
+parcelHelpers.export(exports, "includeDeviceByMac", ()=>includeDeviceByMac);
+var _devicesDemoJson = require("./data/devices-demo.json");
+var _devicesDemoJsonDefault = parcelHelpers.interopDefault(_devicesDemoJson);
 var _devicesSdnJson = require("./data/devices_sdn.json");
 var _devicesSdnJsonDefault = parcelHelpers.interopDefault(_devicesSdnJson);
 var _communicationsJson = require("./data/communications.json");
 var _communicationsJsonDefault = parcelHelpers.interopDefault(_communicationsJson);
 function getDevicesStatic() {
     let deviceList = [];
-    for (let device of (0, _devicesJsonDefault.default)){
+    for (let device of (0, _devicesDemoJsonDefault.default)){
         let deviceEntry = {
             hostname: device.hostname,
             ip: device.ip,
@@ -25894,18 +25909,36 @@ function getIsolatedDevices() {
         return [];
     });
 }
-function isolateDevice(selectedIP) {
+function isolateDeviceByIp(selectedIP) {
     console.log(selectedIP + " is now isolated from the network.");
-    return fetch("http://localhost:5000/isolate/" + selectedIP, {
+    return fetch("http://localhost:5000/isolate_ip/" + selectedIP, {
         method: "POST"
     }).then((response)=>response.json()).catch((error)=>{
         // Handle any errors that occur during the request
         console.error("Error:", error);
     });
 }
-function includeDevice(selectedIP) {
+function includeDeviceByIp(selectedIP) {
     console.log(selectedIP + " is no longer isolated.");
-    return fetch("http://localhost:5000/include/" + selectedIP, {
+    return fetch("http://localhost:5000/include_ip/" + selectedIP, {
+        method: "POST"
+    }).then((response)=>response.json()).catch((error)=>{
+        // Handle any errors that occur during the request
+        console.error("Error:", error);
+    });
+}
+function isolateDeviceByMac(selectedMac) {
+    console.log(selectedMac + " is now isolated from the network.");
+    return fetch("http://localhost:5000/isolate_mac/" + selectedMac, {
+        method: "POST"
+    }).then((response)=>response.json()).catch((error)=>{
+        // Handle any errors that occur during the request
+        console.error("Error:", error);
+    });
+}
+function includeDeviceByMac(selectedMac) {
+    console.log(selectedMac + " is no longer isolated.");
+    return fetch("http://localhost:5000/include_mac/" + selectedMac, {
         method: "POST"
     }).then((response)=>response.json()).catch((error)=>{
         // Handle any errors that occur during the request
@@ -25913,14 +25946,14 @@ function includeDevice(selectedIP) {
     });
 }
 
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./data/devices.json":"iDD7N","./data/communications.json":"aA0YQ","./data/devices_sdn.json":"hpbTf"}],"iDD7N":[function(require,module,exports) {
+},{"./data/devices-demo.json":"clm5S","./data/devices_sdn.json":"hpbTf","./data/communications.json":"aA0YQ","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"clm5S":[function(require,module,exports) {
 module.exports = JSON.parse('[{"dev":"br0","stale":true,"mac":"1a:2b:3c:4d:5e:6f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.1","hostname":"OpenWRT","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"3e:8b:9e:ad:be:cf","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.2","hostname":"Switch_2","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"da:eb:fc:1d:2e:3f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.3","hostname":"Switch_3","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"4a:5b:6c:7d:8e:9f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.4","hostname":"Switch_4","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"af:be:ca:fe:b0:0b","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.50","hostname":"Laptop","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"1f:2e:3d:4c:5b:6a","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.51","hostname":"Android Phone","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"cc:dd:ee:ff:aa:bb","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.52","hostname":"Drucker","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"1b:2c:3d:4e:5f:6a","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.53","hostname":"Home Assistant","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"ab:cd:ef:12:34:56","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.60","hostname":"Lampe_0","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:ab:cd:ef","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.61","hostname":"Lampe_1","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"ab:cd:ef:12:34:56","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.62","hostname":"Lampe_2","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"1a:2b:3c:4d:5e:6f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.63","hostname":"Lampe_3","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"7a:8b:9c:ad:be:cf","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.64","hostname":"Lampe_4","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"da:eb:fc:1d:2e:3f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.65","hostname":"Lampe_5","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"4a:5b:6c:7d:8e:9f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.70","hostname":"Sensor_0","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"af:be:ca:fe:b0:0b","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.71","hostname":"Sensor_1","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"1f:2e:3d:4c:5b:6a","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.72","hostname":"Sensor_2","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.73","hostname":"Sensor_3","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.74","hostname":"Sensor_4","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.75","hostname":"Sensor_5","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.101","hostname":"Isolated_0","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.102","hostname":"Isolated_1","host":"192.168.1.1"}]');
 
-},{}],"aA0YQ":[function(require,module,exports) {
-module.exports = JSON.parse('{"flow_table":[{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.2"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.3"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.4"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.3","ipv4_dst":"192.168.1.4"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.50","ipv4_dst":"192.168.1.53"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.51","ipv4_dst":"192.168.1.52"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.60","ipv4_dst":"192.168.1.63"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.70","ipv4_dst":"192.168.1.75"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.101","ipv4_dst":"192.168.1.102"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.2","ipv4_dst":"192.168.1.50"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.52","ipv4_dst":"192.168.1.70"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.60","ipv4_dst":"192.168.1.64"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.53","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.3","ipv4_dst":"192.168.1.2"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.64","ipv4_dst":"192.168.1.65"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.4","ipv4_dst":"192.168.1.101"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.75","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.51","ipv4_dst":"192.168.1.53"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.61","ipv4_dst":"192.168.1.62"},"actions":["allow_packet"]}]}');
-
 },{}],"hpbTf":[function(require,module,exports) {
-module.exports = JSON.parse('[{"dev":"br0","stale":true,"mac":"1a:2b:3c:4d:5e:6f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.1","hostname":"OpenWRT","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"3e:8b:9e:ad:be:cf","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.2","hostname":"Switch_2","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"da:eb:fc:1d:2e:3f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.3","hostname":"Switch_3","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"4a:5b:6c:7d:8e:9f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.4","hostname":"Switch_4","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"af:be:ca:fe:b0:0b","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.50","hostname":"Laptop","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"1f:2e:3d:4c:5b:6a","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.51","hostname":"Android Phone","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"cc:dd:ee:ff:aa:bb","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.52","hostname":"Drucker","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"1b:2c:3d:4e:5f:6a","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.53","hostname":"Home Assistant","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"ab:cd:ef:12:34:56","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.60","hostname":"Lampe_0","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"12:34:56:ab:cd:ef","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.61","hostname":"Lampe_1","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"ab:cd:ef:12:34:56","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.62","hostname":"Lampe_2","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"1a:2b:3c:4d:5e:6f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.63","hostname":"Lampe_3","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"7a:8b:9c:ad:be:cf","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.64","hostname":"Lampe_4","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"da:eb:fc:1d:2e:3f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.65","hostname":"Lampe_5","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"4a:5b:6c:7d:8e:9f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.70","hostname":"Sensor_0","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"af:be:ca:fe:b0:0b","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.71","hostname":"Sensor_1","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"1f:2e:3d:4c:5b:6a","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.72","hostname":"Sensor_2","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.73","hostname":"Sensor_3","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.74","hostname":"Sensor_4","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.75","hostname":"Sensor_5","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.101","hostname":"Isolated_0","host":"192.168.1.4"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.102","hostname":"Isolated_1","host":"192.168.1.4"}]');
+module.exports = JSON.parse('[{"dev":"br0","stale":true,"mac":"1a:2b:3c:4d:5e:6f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.1","hostname":"OpenWRT","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"3e:8b:9e:ad:be:cf","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.2","hostname":"Switch_2","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"da:eb:fc:1d:2e:3f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.3","hostname":"Switch_3","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"af:be:ca:fe:b0:0b","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.50","hostname":"Laptop","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"1f:2e:3d:4c:5b:6a","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.51","hostname":"Printer","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"cc:dd:ee:ff:aa:bb","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.52","hostname":"Android Phone","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"1b:2c:3d:4e:5f:6a","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.53","hostname":"Home Assistant","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"ab:cd:ef:12:34:56","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.60","hostname":"Lampe_0","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"12:34:56:ab:cd:ef","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.61","hostname":"Lampe_1","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"ab:cd:ef:12:34:56","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.62","hostname":"Lampe_2","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"1a:2b:3c:4d:5e:6f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.63","hostname":"Lampe_3","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"7a:8b:9c:ad:be:cf","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.64","hostname":"Lampe_4","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"da:eb:fc:1d:2e:3f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.65","hostname":"Lampe_5","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"4a:5b:6c:7d:8e:9f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.70","hostname":"Sensor_0","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"af:be:ca:fe:b0:0b","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.71","hostname":"Sensor_1","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"1f:2e:3d:4c:5b:6a","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.72","hostname":"Sensor_2","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.73","hostname":"Sensor_3","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.74","hostname":"Sensor_4","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.75","hostname":"Sensor_5","host":"192.168.1.3"}]');
+
+},{}],"aA0YQ":[function(require,module,exports) {
+module.exports = JSON.parse('{"flow_table":[{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.2"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.3"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.4"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.3","ipv4_dst":"192.168.1.4"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.50","ipv4_dst":"192.168.1.53"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.52","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.52"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.51","ipv4_dst":"192.168.1.52"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.60","ipv4_dst":"192.168.1.63"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.70","ipv4_dst":"192.168.1.75"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.101","ipv4_dst":"192.168.1.102"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.2","ipv4_dst":"192.168.1.50"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.52","ipv4_dst":"192.168.1.70"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.60","ipv4_dst":"192.168.1.64"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.53","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.3","ipv4_dst":"192.168.1.2"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.64","ipv4_dst":"192.168.1.65"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.4","ipv4_dst":"192.168.1.101"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.75","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.51","ipv4_dst":"192.168.1.53"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.61","ipv4_dst":"192.168.1.62"},"actions":["allow_packet"]}]}');
 
 },{}],"87WFb":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");

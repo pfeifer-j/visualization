@@ -7,24 +7,31 @@ from flask_cors import CORS
 from openwrt_luci_rpc import OpenWrtRpc
 import requests
 import json
+import yaml
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app)
 
-ROUTER_IP = "192.168.1.1"
-ROUTER_USER = "root"
-ROUTER_PASSWORD = "MySmartHome!"
-RYU_DATAPATH = "placeholder"
-RYU_PORT = 8080
+# Load the secrets.yaml file
+with open("../../../../config/secrets.yaml", "r") as file:
+    secrets = yaml.safe_load(file)
+
+# Use the secrets in your Python code
+ROUTER_IP = secrets["router_ip"]
+ROUTER_USER = secrets["router_user"]
+ROUTER_PASSWORD = secrets["router_password"]
+RYU_DATAPATH = secrets.get("ryu_datapath") or get_switch_dpid()
+
+RYU_PORT = secrets["ryu_port"]
 
 # MQTT broker details
-BROKER_ADDRESS = "192.168.1.10"
-BROKER_PORT = 1883
-TOPIC = "isolator"
+BROKER_ADDRESS = secrets["broker_address"]
+BROKER_PORT = secrets["broker_port"]
+TOPIC = secrets["topic"]
 
 # OVS switch details
-SWITCH_ADDRESS = "192.168.1.1"
-SWITCH_PORT = "8080"
+SWITCH_ADDRESS = secrets["switch_address"]
+SWITCH_PORT = secrets["switch_port"]
 
 # Extension for JSON support
 BLOCKED_IPS = []
@@ -46,22 +53,28 @@ def load_ips_from_file(filename):
         return []
 
 
-@app.route("/devices")
-def get_devices():
-    """Retrieves a list of all connected devices."""
+def get_switch_dpid():
+    """Get the DPID of the switch."""
     try:
-        router = OpenWrtRpc(ROUTER_IP, ROUTER_USER, ROUTER_PASSWORD)
-        result = router.get_all_connected_devices(only_reachable=False)
-        print(dir(router))
+        url = f"http://{ROUTER_IP}:{RYU_PORT}/stats/switches"
+        response = requests.get(url, timeout=5)
 
-        device_list = [device._asdict() for device in result]
-        return jsonify(device_list)
+        if response.ok:
+            switches = response.json()
+            if switches:
+                return switches[0]
+            else:
+                print("No switches found.")
+                return None
+        else:
+            print(f"Failed to retrieve switches. Status code: {response.status_code}")
+            return None
     except Exception as error:
-        print(f"Failed to retrieve devices: {str(error)}")
-        return jsonify({"error": str(error)}), 500
+        print(f"Error while retrieving DPID: {str(error)}")
+        return None
 
 
-@app.route("/devices-sdn")
+@app.route("/devices")
 def get_devices():
     """Retrieves a list of all connected devices."""
     try:
@@ -80,12 +93,35 @@ def get_devices():
 def get_communications():
     """Retrieves a list of all communications."""
     try:
-        url = f"http://{ROUTER_IP}:{RYU_PORT}/stats/flow/" + RYU_DATAPATH
+        if not RYU_DATAPATH:
+            return jsonify({"error": "Could not retrieve switch DPID"}), 500
+
+        url = f"http://{ROUTER_IP}:{RYU_PORT}/stats/flow/{RYU_DATAPATH}"
         response = requests.get(url, timeout=5)
 
         if response.ok:
-            flow_table = response.json()
-            return jsonify(flow_table)
+            raw_flow_table = response.json().get(str(RYU_DATAPATH), [])
+
+            # Convert the raw data to desired format
+            formatted_flow_table = []
+
+            for flow in raw_flow_table:
+                match_data = flow.get("match", {})
+                src_ip = match_data.get("ipv4_src")
+                dst_ip = match_data.get("ipv4_dst")
+
+                # If both source and destination IP are available, process the data
+                if src_ip and dst_ip:
+                    formatted_flow = {
+                        "match": {"ipv4_src": src_ip, "ipv4_dst": dst_ip},
+                        # Assuming all actions result in 'allow_packet' for now
+                        # You might want to add specific checks based on your actual OVS rules to set appropriate actions
+                        "actions": ["allow_packet"],
+                    }
+
+                    formatted_flow_table.append(formatted_flow)
+
+            return jsonify({"flow_table": formatted_flow_table})
         else:
             print(f"Failed to retrieve flow table. Status code: {response.status_code}")
             return (
@@ -112,78 +148,77 @@ def get_isolated_devices():
         return jsonify({"error": str(error)}), 500
 
 
-@app.route("/isolate/<ip_address>", methods=["POST"])
-def isolate(ip_address):
-    """Adds a device with a given IP address to the json file"""
-    flow = {
-        "dpid": "br0",
-        "cookie": 0,
+@app.route("/isolate_mac/<mac_address>", methods=["POST"])
+def isolate_mac(mac_address):
+    # First GET request
+    try:
+        response = requests.get("http://{SWITCH_ADDRESS}:{SWITCH_PORT}/stats/s")
+        response.raise_for_status()
+        print(
+            response.json()
+        )  # Print the response for the GET request (or process it however you want)
+    except requests.RequestException as e:
+        print(f"Error during GET request: {e}")
+
+    # Second POST request
+    post_payload = {
+        "dpid": RYU_DATAPATH,
+        "cookie": 1,
+        "cookie_mask": 1,
         "table_id": 0,
-        "priority": 100,
-        "match": {"nw_src": ip_address},
-        "actions": [{"type": "OUTPUT", "port": "CONTROLLER"}],
+        "idle_timeout": 0,
+        "hard_timeout": 0,
+        "priority": 1000,
+        "flags": 1,
+        "match": {"dl_src": mac_address},
+        "actions": [],
     }
-    url = f"http://{SWITCH_ADDRESS}:{SWITCH_PORT}/stats/flowentry/add"
-    headers = {"Content-type": "application/json"}
 
     try:
-        response = requests.post(url, data=json.dumps(flow), headers=headers)
+        response = requests.post(
+            "http://192.168.1.10:8080/stats/flowentry/add", json=post_payload
+        )
         response.raise_for_status()
-    except requests.exceptions.HTTPError as http_error:
-        print(f"HTTP Error occurred while trying to isolate {ip_address}: {http_error}")
-    except Exception as error:
-        print(f"Other error occurred while trying to isolate {ip_address}: {error}")
-    else:
-        if ip_address not in BLOCKED_IPS:
-            BLOCKED_IPS.append(ip_address)
-            print(f"Added {ip_address} to the blacklist")
-        else:
-            print(f"{ip_address} is already on the blacklist")
-
-    ips = load_ips_from_file(BLOCKED_IP_JSON)
-    ip_dict = {"ip": ip_address}
-    if ip_dict not in ips:
-        ips.append(ip_dict)
-        save_ips_to_file(ips, BLOCKED_IP_JSON)
-    return jsonify({"status": "success"}), 200
+        print(
+            response.json()
+        )  # Print the response for the POST request (or process it however you want)
+    except requests.RequestException as e:
+        print(f"Error during POST request: {e}")
 
 
-@app.route("/include/<ip_address>", methods=["POST"])
-def include_ip(ip_address):
-    """
-    Removes a device with a given IP address from the json file.
-    """
-    flow = {
-        "dpid": "br0",
-        "cookie": 0,
+@app.route("/include_mac/<mac_address>", methods=["POST"])
+def include_mac(mac_address):
+    # First GET request
+    try:
+        response = requests.get(f"http://{SWITCH_ADDRESS}:{SWITCH_PORT}/stats/s")
+        response.raise_for_status()
+        print(response.json())  # Print the response for the GET request
+    except requests.RequestException as e:
+        print(f"Error during GET request: {e}")
+
+    # Second POST request for deleting the flow entry
+    post_payload = {
+        "dpid": RYU_DATAPATH,
+        "cookie": 1,
+        "cookie_mask": 1,
         "table_id": 0,
-        "priority": 100,
-        "match": {"nw_src": ip_address},
-        "actions": [{"type": "OUTPUT", "port": "NORMAL"}],
+        "idle_timeout": 0,
+        "hard_timeout": 0,
+        "priority": 1000,
+        "flags": 1,
+        "match": {"dl_src": mac_address},
     }
-    url = f"http://{SWITCH_ADDRESS}:{SWITCH_PORT}/stats/flowentry/delete_strict"
-    headers = {"Content-type": "application/json"}
 
     try:
-        response = requests.post(url, data=json.dumps(flow), headers=headers)
+        response = requests.post(
+            "http://192.168.1.10:8080/stats/flowentry/delete", json=post_payload
+        )  # This is where the endpoint has been corrected.
         response.raise_for_status()
-    except requests.exceptions.HTTPError as http_error:
-        print(f"HTTP Error occurred while trying to include {ip_address}: {http_error}")
-    except Exception as error:
-        print(f"Other error occurred while trying to include {ip_address}: {error}")
-    else:
-        if ip_address in BLOCKED_IPS:
-            BLOCKED_IPS.remove(ip_address)
-            print(f"Removed {ip_address} from the blacklist")
-        else:
-            print(f"{ip_address} was not blacklisted")
-
-    ips = load_ips_from_file(BLOCKED_IP_JSON)
-    ip_dict = {"ip": ip_address}
-    if ip_dict in ips:
-        ips.remove(ip_dict)
-        save_ips_to_file(ips, BLOCKED_IP_JSON)
-    return jsonify({"status": "success"}), 200
+        print(response.json())  # Print the response for the POST request
+        return jsonify(response.json()), 200
+    except requests.RequestException as e:
+        print(f"Error during POST request: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 if __name__ == "__main__":

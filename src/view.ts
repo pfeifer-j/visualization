@@ -1,11 +1,7 @@
 import * as d3 from "d3";
 // Live Imports
-import { getDevices } from "./network";
-import { getDevicesSDN } from "./network";
-import { getIsolatedDevices } from "./network";
-import { getCommunications } from "./network";
-import { isolateDevice } from "./network";
-import { includeDevice } from "./network";
+
+import * as network from "./network";
 
 //Example Imports
 import { getDevicesStatic } from "./network";
@@ -49,9 +45,8 @@ export async function generateView(htmlSource, config) {
         links: [],
     };
 
-
     // Select the correct devices to be displayed
-    let devices = await (!config.isDemo ? getDevices() : (config.mode == "software" ? getDevicesSDN() : getDevicesStatic()));
+    let devices = await (!config.isDemo ? network.getDevices() : (config.mode == "software" ? network.getDevicesSDN() : getDevicesStatic()));
 
     try {
         devices.forEach((device) => {
@@ -104,7 +99,7 @@ export async function generateView(htmlSource, config) {
         .on("click", clearSelection);
 
     // Read isolated devices
-    let isolatedDevices = await getIsolatedDevices();
+    let isolatedDevices = await network.getIsolatedDevices();
 
 
     // Fill graph with data
@@ -162,6 +157,7 @@ export async function generateView(htmlSource, config) {
 
     nodes.call(drag);
 
+    let renderedOnce = false;
     function ticked() {
         nodes.attr("cx", function (d) {
             return d.x;
@@ -178,6 +174,12 @@ export async function generateView(htmlSource, config) {
         }).attr("y2", function (d) {
             return d.target.y;
         });
+
+        // If it's the first time the graph has rendered, log the time.
+        if (!renderedOnce) {
+            console.log(`Graph rendered at: $${new Date().getSeconds().toString()} and ${new Date().getMilliseconds().toString()}`);
+            renderedOnce = true;
+        }
     }
 
     function dragstarted(event, d) {
@@ -429,16 +431,18 @@ export async function generateView(htmlSource, config) {
                         let selected = this.getAttribute("selected") === "true";
                         if (selected) {
                             let selectedIP = this.getAttribute("ip");
+                            let selectedMac = this.getAttribute("mac");
 
                             // Error handling for isolation OpenWRT
-                            if (selectedIP == openWrtIP) {
-                                window.confirm("You cant isolate the source node!");
+                            if (selectedIP === openWrtIP) {
+                                window.confirm("You can't isolate the source node!");
                             }
 
                             // Confirm dialog for isolation
-                            let confirmDelete = window.confirm("Are you sure you want to isolate " + selectedIP + "?");
+                            let confirmDelete = window.confirm(`Are you sure you want to isolate IP: ${selectedIP} and MAC: ${selectedMac}?`);
                             if (confirmDelete) {
-                                isolateDevice(selectedIP);
+                                // network.isolateDeviceByIp(selectedIP);
+                                network.isolateDeviceByMac(selectedMac);
                             }
                         }
                         return selected;
@@ -453,13 +457,14 @@ export async function generateView(htmlSource, config) {
                 graphSvg.selectAll("circle")
                     .filter(function (d) {
                         let selected = this.getAttribute("selected") === "true";
-
-                        // Confirm dialog for including devices
                         if (selected) {
                             let selectedIP = this.getAttribute("ip");
-                            let confirmDelete = window.confirm("Are you sure you want to include " + selectedIP + "?");
-                            if (confirmDelete) {
-                                includeDevice(selectedIP);
+                            let selectedMac = this.getAttribute("mac"); // Assuming the MAC attribute is named 'mac'
+                            // Confirm dialog for including devices
+                            let confirmInclude = window.confirm(`Are you sure you want to include IP: ${selectedIP} and MAC: ${selectedMac}?`);
+                            if (confirmInclude) {
+                                // network.includeDeviceByIp(selectedIP);
+                                network.includeDeviceByMac(selectedMac);
                             }
                         }
                         return selected;
@@ -523,7 +528,7 @@ export async function generateView(htmlSource, config) {
 
     // Renders the network flow between devices
     async function showCommunication(selectedIP) {
-        let communications = config.isDemo ? await getCommunicationsStatic() : await getCommunications();
+        let communications = config.isDemo ? await getCommunicationsStatic() : await network.getCommunications();
 
         console.log(communications);
 
@@ -600,7 +605,7 @@ export async function generateView(htmlSource, config) {
     // Update the graph after a set interval
     async function updateGraph() {
         // Only update if the devices have changed.
-        const newDevices = config.isDemo ? await getDevicesStatic() : await getDevices();
+        const newDevices = config.isDemo ? await getDevicesStatic() : await network.getDevices();
         if (JSON.stringify(devices) === JSON.stringify(newDevices)) {
             return;
         }
@@ -637,8 +642,8 @@ export async function generateView(htmlSource, config) {
         });
 
         // Rebind the new data
-        nodes = nodeGroup.selectAll("circle").data(data.nodes, d => d.ip);
-        links = linkGroup.selectAll("line").data(data.links, d => d.source.ip + "-" + d.target.ip);
+        nodes = nodes.selectAll("circle").data(data.nodes, d => d.ip);
+        links = links.selectAll("line").data(data.links, d => d.source.ip + "-" + d.target.ip);
 
         // Remove old nodes
         nodes.exit().remove();

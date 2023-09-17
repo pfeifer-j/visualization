@@ -1,4 +1,7 @@
-import deviceData from './data/devices.json';
+import deviceDataSmall from './data/devices-small.json';
+import deviceDataMid from './data/devices-mid.json';
+import deviceDataLarge from './data/devices-large.json';
+import deviceDataDemo from './data/devices-demo.json';
 import sdnData from './data/devices_sdn.json';
 import communicationData from "./data/communications.json";
 import isolatedData from "./data/isolated_devices.json";
@@ -7,7 +10,7 @@ import isolatedData from "./data/isolated_devices.json";
 export function getDevicesStatic() {
     let deviceList = [];
 
-    for (let device of deviceData) {
+    for (let device of deviceDataDemo) {
         let deviceEntry = {
             hostname: device.hostname,
             ip: device.ip,
@@ -124,12 +127,11 @@ export function getIsolatedDevices() {
         });
 }
 
-
 // Sends a api-request to isolate the device with the given ip from the network.
-export function isolateDevice(selectedIP) {
+export function isolateDeviceByIp(selectedIP) {
     console.log(selectedIP + " is now isolated from the network.")
 
-    return fetch('http://localhost:5000/isolate/' + selectedIP, {
+    return fetch('http://localhost:5000/isolate_ip/' + selectedIP, {
         method: 'POST'
     })
         .then(response => response.json())
@@ -139,12 +141,39 @@ export function isolateDevice(selectedIP) {
         });
 }
 
-
 // Sends a api-request to remove the isolation of the device with the given ip.
-export function includeDevice(selectedIP) {
+export function includeDeviceByIp(selectedIP) {
     console.log(selectedIP + " is no longer isolated.")
 
-    return fetch('http://localhost:5000/include/' + selectedIP, {
+    return fetch('http://localhost:5000/include_ip/' + selectedIP, {
+        method: 'POST'
+    })
+        .then(response => response.json())
+        .catch(error => {
+            // Handle any errors that occur during the request
+            console.error('Error:', error);
+        });
+}
+
+// Sends an api-request to isolate the device with the given MAC address from the network.
+export function isolateDeviceByMac(selectedMac) {
+    console.log(selectedMac + " is now isolated from the network.");
+
+    return fetch('http://localhost:5000/isolate_mac/' + selectedMac, {
+        method: 'POST'
+    })
+        .then(response => response.json())
+        .catch(error => {
+            // Handle any errors that occur during the request
+            console.error('Error:', error);
+        });
+}
+
+// Sends an api-request to remove the isolation of the device with the given MAC address.
+export function includeDeviceByMac(selectedMac) {
+    console.log(selectedMac + " is no longer isolated.");
+
+    return fetch('http://localhost:5000/include_mac/' + selectedMac, {
         method: 'POST'
     })
         .then(response => response.json())
