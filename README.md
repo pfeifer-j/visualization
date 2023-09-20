@@ -13,24 +13,21 @@ This visualization tool was developed during a bachelor's thesis in computer sci
 1. **Prerequisites**:
    - A Raspberry Pi 4 Model B or equivalent.
    - Various IoT devices.
-   - A good grasp of Home Assistant, OpenWRT, and Open vSwitch (OVS) platforms.
+   - A very basic understanding of Home Assistant, OpenWRT, and Open vSwitch (OVS) platforms. Explanations can be found in the thesis.
    
 2. **Hardware Configuration**:
-   - Consult the architecture section of the [thesis](./Bachelorthesis - Jan Pfeifer.pdf) for the preferred physical layout.
+   - Consult the architecture section of the thesis for the preferred physical layout.
    - Connect the IoT devices to the WiFi network.
 
 3. **Software Configuration**:
-   - Adhere to the software versions mentioned in the [thesis](./Bachelorthesis - Jan Pfeifer.pdf). Ensure the installation of Home Assistant, OpenWRT, OVS, and Ryu.
-   - Utilize configuration files and scripts available in this repository for setup and configuration.
-
-4. **Post-Installation Verification**:
-   - Validate the setup using standard network diagnostic tools and commands.
+   - Adhere to the software versions mentioned in the thesis. Ensure the installation of Home Assistant, OpenWRT, OVS, and Ryu.
+   - Utilize configuration files and backups available in this repository for setup and configuration.
 
 ## Usage
 
 1. **Accessing the Tool**:
-   - Launch the Home Assistant UI via the assigned IP address (e.g., http://localhost:8124 for local setups).
-   - Navigate to the network visualization tool.
+   - Launch Home Assistant via the preferred way.
+   - Add to the network visualization tool. 
 
 2. **Interacting with the Visualization**:
    - Devices are symbolized as nodes on the graph.
@@ -38,7 +35,7 @@ This visualization tool was developed during a bachelor's thesis in computer sci
    - Employ the editor for a personalized visualization experience.
 
 3. **Network Traffic Management**:
-   - Isolate devices, view communication channels, and manage network flow. Refer to the tool's help section for comprehensive instructions.
+   - View communication partners and isolate devices.
 
 ## Features
 
@@ -52,5 +49,5 @@ This visualization tool was developed during a bachelor's thesis in computer sci
 
 ---
 
-For questions, feedback, or support, please refer to the GitHub issues or contact the maintainer directly.
+For questions, feedback, or support, please refer to the GitHub issues or contact me directly.
 
