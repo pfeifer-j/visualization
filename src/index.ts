@@ -1,3 +1,13 @@
+/**
+ * index.tx - Defines the custom Network Visualization card integration.
+ *
+ * Purpose:
+ * This module registers the custom Network Visualization card and its associated editor
+ * for use within the Home Assistant frontend.
+ *
+ * Author: Jan Pfeifer
+ */
+
 import { NetworkVisualization } from "./card";
 import { NetworkVisualizationEditor } from "./editor";
 

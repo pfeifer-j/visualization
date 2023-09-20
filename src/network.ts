@@ -1,74 +1,47 @@
-import deviceDataSmall from './data/devices-small.json';
-import deviceDataMid from './data/devices-mid.json';
-import deviceDataLarge from './data/devices-large.json';
-import deviceDataDemo from './data/devices-demo.json';
-import sdnData from './data/devices_sdn.json';
-import communicationData from "./data/communications.json";
-import isolatedData from "./data/isolated_devices.json";
+/**
+ * network.ts - Client-side API for managing network devices.
+ *
+ * Purpose:
+ * This module provides functions to retrieve, manage, and visualize devices in a network.
+ *
+ * Author: Jan Pfeifer
+ *
+ * Notes:
+ * - This file focuses on achieving core functionality.
+ * - Critical security measures like authentication are currently omitted and must be addressed in future iterations.
+ * - Dependencies: Assumes the python server is running responding to specified routes.
+ */
 
-// Return the devices from the example-json
-export function getDevicesStatic() {
-    let deviceList = [];
+// Imports for the demonstrative network
+import deviceDataSmall from './demo/devices-small.json';
+import deviceDataMedium from './demo/devices-mid.json';
+import deviceDataLarge from './demo/devices-large.json';
+import sdnData from './demo/devices-sdn.json';
+import communicationData from "./demo/communications.json";
 
-    for (let device of deviceDataDemo) {
-        let deviceEntry = {
-            hostname: device.hostname,
-            ip: device.ip,
-            mac: device.mac,
-            reachable: device.reachable,
-            host: device.host
-        };
-        deviceList.push(deviceEntry);
-    }
-    return deviceList;
-}
 
-// Return the devices from the example-json
-export function getDevicesSDN() {
-    let deviceList = [];
+// Contains the api url entry point.
+// Change to homeassistant.local in smart home environment or localhost in docker environment.
+const homeAssistant = "http://localhost:5000";
 
-    for (let device of sdnData) {
-        let deviceEntry = {
-            hostname: device.hostname,
-            ip: device.ip,
-            mac: device.mac,
-            reachable: device.reachable,
-            host: device.host
-        };
-        deviceList.push(deviceEntry);
-    }
-    return deviceList;
-}
-
-// Return the communications from the example-json
-export function getCommunicationsStatic() {
-    let communicationList = [];
-
-    for (let communication of communicationData.flow_table) {
-        let communicationEntry = {
-            src: communication.match.ipv4_src,
-            dst: communication.match.ipv4_dst,
-        };
-        communicationList.push(communicationEntry);
-    }
-    return communicationList;
-}
-
-// Retrieve devices from the router
-export function getDevices() {
+// Retrieve devices from the OpenWRT router
+export function getDevices(openWrtIP) {
     let processedDeviceList = [];
-    return fetch('http://localhost:5000/devices')
+
+    return fetch(homeAssistant + '/devices')
         .then(response => response.json())
+
+        // Push the source node and add other devices to the list
         .then(deviceList => {
+            // todo
             let sourceNode = {
                 hostname: "OpenWrt",
-                ip: "192.168.1.1",
-                mac: "12:34:45:67:89",
+                ip: openWrtIP,
+                mac: "--:--:--:--:--:--",
                 reachable: "true",
                 host: "192.168.1.1"
             };
             processedDeviceList.push(sourceNode)
-
             for (let device of deviceList) {
                 let deviceEntry = {
                     hostname: device.hostname,
@@ -88,19 +61,19 @@ export function getDevices() {
 }
 
 
-// Retrieve communications from OVS
+// Retrieve mac-based communications from Open vSwitch
 export function getCommunications() {
     let communicationList = [];
 
-    return fetch('http://localhost:5000/communications')
+    return fetch(homeAssistant + '/communications')
         .then(response => response.json())
         .then(communicationData => {
             // Process the communicationData as needed
             for (let communication of communicationData) {
-                let communicationEntry = [
-                    communication.match.ipv4_src,
-                    communication.match.ipv4_dst
-                ];
+                let communicationEntry = {
+                    sourceMac: communication.source_mac,
+                    destinationMac: communication.destination_mac
+                };
                 communicationList.push(communicationEntry);
             }
             return communicationList;
@@ -112,9 +85,10 @@ export function getCommunications() {
         });
 }
 
-// Retrieve isolated devices from the router
+// Retrieve isolated devices from the Open vSwitch
 export function getIsolatedDevices() {
-    return fetch('http://localhost:5000/isolated_devices')
+    return [];
+    /*return fetch(homeAssistant + '/isolated_devices')
         .then(response => response.json())
         .then(deviceList => {
             let isolatedDeviceList = deviceList.map(device => device.ip);
@@ -124,42 +98,12 @@ export function getIsolatedDevices() {
             // Handle any errors that occur during the request
             console.error('Error:', error);
             return [];
-        });
+        });*/
 }
 
-// Sends a api-request to isolate the device with the given ip from the network.
-export function isolateDeviceByIp(selectedIP) {
-    console.log(selectedIP + " is now isolated from the network.")
-
-    return fetch('http://localhost:5000/isolate_ip/' + selectedIP, {
-        method: 'POST'
-    })
-        .then(response => response.json())
-        .catch(error => {
-            // Handle any errors that occur during the request
-            console.error('Error:', error);
-        });
-}
-
-// Sends a api-request to remove the isolation of the device with the given ip.
-export function includeDeviceByIp(selectedIP) {
-    console.log(selectedIP + " is no longer isolated.")
-
-    return fetch('http://localhost:5000/include_ip/' + selectedIP, {
-        method: 'POST'
-    })
-        .then(response => response.json())
-        .catch(error => {
-            // Handle any errors that occur during the request
-            console.error('Error:', error);
-        });
-}
-
-// Sends an api-request to isolate the device with the given MAC address from the network.
+// Isolate the device with the given MAC address
 export function isolateDeviceByMac(selectedMac) {
-    console.log(selectedMac + " is now isolated from the network.");
-
-    return fetch('http://localhost:5000/isolate_mac/' + selectedMac, {
+    return fetch(homeAssistant + '/isolate_mac/' + selectedMac, {
         method: 'POST'
     })
         .then(response => response.json())
@@ -169,11 +113,11 @@ export function isolateDeviceByMac(selectedMac) {
         });
 }
 
-// Sends an api-request to remove the isolation of the device with the given MAC address.
+// Include the device with the given MAC address
 export function includeDeviceByMac(selectedMac) {
     console.log(selectedMac + " is no longer isolated.");
 
-    return fetch('http://localhost:5000/include_mac/' + selectedMac, {
+    return fetch(homeAssistant + '/include_mac/' + selectedMac, {
         method: 'POST'
     })
         .then(response => response.json())
@@ -181,4 +125,90 @@ export function includeDeviceByMac(selectedMac) {
             // Handle any errors that occur during the request
             console.error('Error:', error);
         });
+}
+
+/*
+    The following methods are used for the demo network and testing.
+*/
+
+// Return the devices from small demo network with 20 devices
+export function getSmallNetwork() {
+    let deviceList = [];
+
+    for (let device of deviceDataSmall) {
+        let deviceEntry = {
+            hostname: device.hostname,
+            ip: device.ip,
+            mac: device.mac,
+            reachable: device.reachable,
+            host: device.host
+        };
+        deviceList.push(deviceEntry);
+    }
+    return deviceList;
+}
+
+// Return the devices from medium sized demo network with 100 devices
+export function getMediumNetwork() {
+    let deviceList = [];
+
+    for (let device of deviceDataMedium) {
+        let deviceEntry = {
+            hostname: device.hostname,
+            ip: device.ip,
+            mac: device.mac,
+            reachable: device.reachable,
+            host: device.host
+        };
+        deviceList.push(deviceEntry);
+    }
+    return deviceList;
+}
+
+// Return the devices from large demo network 250 with devices
+export function getLargeNetwork() {
+    let deviceList = [];
+
+    for (let device of deviceDataLarge) {
+        let deviceEntry = {
+            hostname: device.hostname,
+            ip: device.ip,
+            mac: device.mac,
+            reachable: device.reachable,
+            host: device.host
+        };
+        deviceList.push(deviceEntry);
+    }
+    return deviceList;
+}
+
+// Return the devices for the small demo network using the sdn structure
+export function getDemoSdn() {
+    let deviceList = [];
+
+    for (let device of sdnData) {
+        let deviceEntry = {
+            hostname: device.hostname,
+            ip: device.ip,
+            mac: device.mac,
+            reachable: device.reachable,
+            host: device.host
+        };
+        deviceList.push(deviceEntry);
+    }
+    return deviceList;
+}
+
+// Return the communication flow for the small demo network
+export function getDemoCommunications() {
+    let communicationList = [];
+
+    for (let communication of communicationData.flow_table) {
+        let communicationEntry = {
+            src: communication.match.ipv4_src,
+            dst: communication.match.ipv4_dst,
+        };
+        communicationList.push(communicationEntry);
+    }
+    return communicationList;
 }

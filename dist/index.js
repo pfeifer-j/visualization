@@ -574,7 +574,15 @@ function hmrAccept(bundle /*: ParcelRequire */ , id /*: string */ ) {
 }
 
 },{}],"h7u1C":[function(require,module,exports) {
-var _card = require("./card");
+/**
+ * index.tx - Defines the custom Network Visualization card integration.
+ *
+ * Purpose:
+ * This module registers the custom Network Visualization card and its associated editor
+ * for use within the Home Assistant frontend.
+ *
+ * Author: Jan Pfeifer
+ */ var _card = require("./card");
 var _editor = require("./editor");
 customElements.define("network-visualization", (0, _card.NetworkVisualization));
 customElements.define("network-visualization-editor", (0, _editor.NetworkVisualizationEditor));
@@ -586,7 +594,21 @@ window.customCards.push({
 });
 
 },{"./card":"5dQCx","./editor":"87WFb"}],"5dQCx":[function(require,module,exports) {
-var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+/**
+ * card.ts - The entry point for visualizing networks in a Home Assistant environment.
+ *
+ * Purpose:
+ * This module creates a custom card for the Home Assistant frontend, providing visualization tools
+ * for network devices and their communications. The card visualizes the data on an SVG canvas and
+ * includes a table for detailed device information.
+ *
+ * Author: Jan Pfeifer
+ *
+ * Notes:
+ * - The card is built using the LitElement library and utilizes D3 for data-driven SVG rendering.
+ * - The card's configuration is adjustable via the Home Assistant's Lovelace card editor.
+ * - Default configuration values are provided for easy setup and can be overridden via the editor.
+ */ var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "NetworkVisualization", ()=>NetworkVisualization);
 var _tsDecorate = require("@swc/helpers/_/_ts_decorate");
@@ -607,6 +629,21 @@ class NetworkVisualization extends (0, _lit.LitElement) {
     set hass(hass) {
         this._hass = hass;
     }
+    connectedCallback() {
+        super.connectedCallback();
+        // Start the interval when the component is connected to the DOM
+        if (this._config && this._config.renderInterval) this._intervalId = window.setInterval(()=>{
+            this.requestUpdate();
+        }, this._config.renderInterval);
+    }
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        // Clear the interval when the component is disconnected from the DOM
+        if (this._intervalId !== undefined) {
+            window.clearInterval(this._intervalId);
+            this._intervalId = undefined;
+        }
+    }
     static #_ = (()=>{
         // Declarative part
         this.styles = (0, _css.styles);
@@ -626,22 +663,22 @@ class NetworkVisualization extends (0, _lit.LitElement) {
             openWrtIP: "192.168.1.1",
             isDemo: false,
             mode: "physical",
-            openWrtColor: "lightblue",
-            nodeReachable: "green",
-            nodeUnreachable: "red",
-            nodeHighlighted: "orange",
-            nodeIsolated: "gray",
-            rowDefault: "transparent",
-            rowSelected: "white",
-            fontDefault: "white",
-            fontSelected: "black",
-            linkDefault: "gray",
-            linkHighlighted: "orange",
             unselectedRadius: 10,
-            communicatedRadius: 12,
+            communicatedRadius: 10,
             selectedRadius: 15,
             linkWidthDefault: 1,
-            linkWidthHighlighted: 3
+            linkWidthHighlighted: 3,
+            openWrtColor: "#627dea",
+            nodeReachable: "#00ff33",
+            nodeUnreachable: "#ff0000",
+            nodeHighlighted: "#f0b056",
+            nodeIsolated: "#ababab",
+            rowDefault: "#ffffff",
+            rowSelected: "#ffc800",
+            fontSelected: "#ffffff",
+            linkDefault: "#949494",
+            linkHighlighted: "#ffbb00",
+            fontDefault: "#474747"
         };
     }
     // Render the card
@@ -656,10 +693,9 @@ class NetworkVisualization extends (0, _lit.LitElement) {
         </div>
       </div>
     `;
-        // Graph
+        // Render the graph itself
         const graphId = "graphSvg";
         const graphSelector = `#${graphId}`;
-        console.log(`Graph render start: ${new Date().getSeconds().toString()} and ${new Date().getMilliseconds().toString()}`);
         setTimeout(()=>{
             const graphSvg = _d3.select(this.renderRoot.querySelector(graphSelector));
             if (this._config) (0, _view.generateView)(this, this._config);
@@ -1871,7 +1907,16 @@ parcelHelpers.export(exports, "isServer", ()=>o);
 const o = !1;
 
 },{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"bFWtE":[function(require,module,exports) {
-var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+/**
+ * styles.ts - Styling module for the Network Visualization card in Home Assistant.
+ *
+ * Purpose:
+ * Provides CSS styles tailored for the Network Visualization card's visual appearance and layout.
+ * This module defines the aesthetic and spatial attributes of elements, ensuring clarity,
+ * responsiveness, and a user-friendly interface in the Home Assistant environment.
+ *
+ * Author: Jan Pfeifer
+ */ var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "styles", ()=>styles);
 var _lit = require("lit");
@@ -25357,12 +25402,25 @@ function nopropagation(event) {
 }
 
 },{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"1ce4O":[function(require,module,exports) {
-var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+/**
+ * network-visualization.ts - A module for visualizing network devices and communication.
+ *
+ * This module integrates d3.js to create an force-directed graph of network devices, complete
+ * with additional detailed views presented in a table format. The visualization allows for
+ * representation of device information, status, and communication flow.
+ *
+ * Main Features:
+ * 1. Dynamic visualization of network devices and links.
+ * 2. Interactive features like sdn controll.
+ * 3. Customizable appearance based on provided or default configurations.
+ * 4. Detailed table view of devices.
+ *
+ * Author: Jan Pfeifer
+ */ var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 // Initialize the d3.js visualization
 parcelHelpers.export(exports, "generateView", ()=>generateView);
 var _d3 = require("d3");
-// Live Imports
 var _network = require("./network");
 async function generateView(htmlSource, config) {
     // Visualisation constants and default settings
@@ -25371,41 +25429,45 @@ async function generateView(htmlSource, config) {
     const tableWidth = 350;
     const tableHeight = 500;
     const unselectedRadius = config.unselectedRadius || 10;
-    const communicatedRadius = config.communicatedRadius || 12;
+    const communicatedRadius = config.communicatedRadius || 10;
     const selectedRadius = config.selectedRadius || 15;
-    const nodeReachable = config.nodeReachable || "#3BD16F";
-    const nodeUnreachable = config.nodeUnreachable || "#F03A47";
-    const nodeHighlighted = config.nodeHighlighted || "orange";
-    const nodeIsolated = config.nodeIsolated || "darkgray";
-    const rowDefault = config.rowDefault || "transparent";
-    const rowSelected = config.rowSelected || "white";
-    const fontDefault = config.fontDefault || "white";
-    const fontSelected = config.fontSelected || "black";
-    const linkDefault = config.linkDefault || "darkgray";
-    const linkHighlighted = config.linkHighlighted || "orange";
+    const nodeReachable = config.nodeReachable || "#00ff33";
+    const nodeUnreachable = config.nodeUnreachable || "#ff0000";
+    const nodeHighlighted = config.nodeHighlighted || "#f0b056";
+    const nodeIsolated = config.nodeIsolated || "#ababab";
+    const rowDefault = config.rowDefault || "#ffffff";
+    const rowSelected = config.rowSelected || "#ffc800";
+    const fontDefault = config.fontDefault || "#474747";
+    const fontSelected = config.fontSelected || "#ffffff";
+    const linkDefault = config.linkDefault || "#949494";
+    const linkHighlighted = config.linkHighlighted || "#ffbb00";
     const linkWidthDefault = config.linkWidthDefault || 1;
-    const linkWidthHighlighted = config.linkWidthHighlighted || 5;
+    const linkWidthHighlighted = config.linkWidthHighlighted || 3;
     const openWrtIP = config.openWrtIP || "192.168.1.1";
-    const openWrtColor = config.openWrtColor || "lightblue";
+    const hassIP = config.hassIP || "192.168.1.20";
+    const openWrtColor = config.openWrtColor || "#627dea";
     const graphForce = config.graphForce || -300;
     const duration = config.duration || 200;
     const mode = config.mode || "physical";
-    //ToDo: Implement multiple shapes
-    const shape = "circle"; //config.shape || "circle";
     // Get the network data
     let data = {
         nodes: [],
         links: []
     };
-    // Select the correct devices to be displayed
-    let devices = await (!config.isDemo ? _network.getDevices() : config.mode == "software" ? _network.getDevicesSDN() : (0, _network.getDevicesStatic)());
+    // Select the correct devices to be displayed. Used for the demo network
+    let devices;
+    if (!config.isDemo) devices = await _network.getDevices(openWrtIP);
+    else devices = config.mode === "software" ? await _network.getDemoSdn() : await _network.getSmallNetwork();
     try {
         devices.forEach((device)=>{
-            let hostname = device.hostname;
+            let hostname = device.hostname && device.hostname.trim().length > 0 ? device.hostname : "N/A";
             let ip = device.ip;
             let mac = device.mac;
             let reachable = device.reachable;
             let host = device.host;
+            // Since there is a bug in the LuCi.rpc, the existence of the mac is enough to check if the device is reachable.
+            // The next line can be removed when this bug in the api software is fixed.
+            if (!config.isDemo) reachable = device.mac != null;
             data.nodes.push({
                 host: host,
                 name: hostname,
@@ -25422,7 +25484,7 @@ async function generateView(htmlSource, config) {
     } catch (error) {
         console.error("Error generating the devicelist:", error);
     }
-    // Generate graph
+    // Generate the graph
     let graphSelector = "#graphSvg";
     let graphElement = htmlSource.renderRoot.querySelector(graphSelector);
     let graphSvg = _d3.select(graphElement).call(_d3.zoom().on("zoom", function(event) {
@@ -25436,11 +25498,11 @@ async function generateView(htmlSource, config) {
     graphElement.setAttribute("height", graphHeight);
     // Add background to graphSvg
     graphSvg.append("rect").attr("width", graphWidth).attr("height", graphHeight).attr("fill", "transparent").on("click", clearSelection);
-    // Read isolated devices
+    // Get the already isolated devices
     let isolatedDevices = await _network.getIsolatedDevices();
     // Fill graph with data
     let links = graphSvg.append("g").selectAll("line").data(data.links).enter().append("line").attr("source", (link)=>link.source).attr("target", (link)=>link.target).style("stroke", linkDefault).attr("stroke-width", linkWidthDefault).attr("marked", "false");
-    let nodes = graphSvg.append("g").selectAll("circle").data(data.nodes).enter().append("circle").attr("r", unselectedRadius).attr("fill", (node)=>isolatedDevices.includes(node.ip) ? nodeIsolated : node.reachable ? nodeReachable : nodeUnreachable).attr("name", (node)=>node.name).attr("ip", (node)=>node.ip).attr("mac", (node)=>node.mac).attr("host", (node)=>node.host).attr("reachable", (node)=>node.reachable).attr("selected", false).attr("isolated", (node)=>isolatedDevices.includes(node.ip));
+    let nodes = graphSvg.append("g").selectAll("circle").data(data.nodes).enter().append("circle").attr("r", unselectedRadius).attr("fill", (node)=>isolatedDevices.includes(node.mac) ? nodeIsolated : node.reachable ? nodeReachable : nodeUnreachable).attr("name", (node)=>node.name).attr("ip", (node)=>node.ip).attr("mac", (node)=>node.mac).attr("host", (node)=>node.host).attr("reachable", (node)=>node.reachable).attr("selected", false).attr("isolated", (node)=>isolatedDevices.includes(node.ip));
     // Mark source node
     graphSvg.select("circle[ip='" + openWrtIP + "']").attr("fill", openWrtColor);
     // Add physics to the graph
@@ -25449,7 +25511,6 @@ async function generateView(htmlSource, config) {
     for(var i = 0; i < 50; ++i)simulation.tick();
     let drag = _d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended);
     nodes.call(drag);
-    let renderedOnce = false;
     function ticked() {
         nodes.attr("cx", function(d) {
             return d.x;
@@ -25465,11 +25526,6 @@ async function generateView(htmlSource, config) {
         }).attr("y2", function(d) {
             return d.target.y;
         });
-        // If it's the first time the graph has rendered, log the time.
-        if (!renderedOnce) {
-            console.log(`Graph rendered at: $${new Date().getSeconds().toString()} and ${new Date().getMilliseconds().toString()}`);
-            renderedOnce = true;
-        }
     }
     function dragstarted(event, d) {
         simulation.alphaTarget(0.3).restart();
@@ -25485,26 +25541,7 @@ async function generateView(htmlSource, config) {
         d.fx = null;
         d.fy = null;
     }
-    // invalidation.then(() => simulation.stop());
-    // return Object.assign(graphSvg.node(), {
-    //     update(newData) {
-    //         const old = new Map(node.data().map(d => [d.ip, d]));
-    //         data.nodes = newData.nodes.map(d => Object.assign(old.get(d.ip) || {}, d));
-    //         data.links = newData.links.map(d => Object.assign({}, d));
-    //         simulation.nodes(data.nodes);
-    //         simulation.force("link").links(data.links);
-    //         simulation.alpha(1).restart();
-    //         node = node
-    //             .data(data.nodes, d => d.ip)
-    //             .join(enter => enter.append("circle")
-    //                 .attr("r", 8)
-    //                 .attr("fill", d => color(d.ip)));  // Replace color(d.ip) with your desired color function
-    //         link = link
-    //             .data(data.links, d => `${d.source.ip}\t${d.target.ip}`)
-    //             .join("line");
-    //     }
-    // });
-    // Generate table
+    // Generate the table
     let tableSelector = "#tableSvg";
     let tableElement = htmlSource.renderRoot.querySelector(tableSelector);
     let tableSvg = _d3.select(tableElement).append("g");
@@ -25545,10 +25582,7 @@ async function generateView(htmlSource, config) {
     nodes.on("mouseover", handleMouseOver).on("mouseout", handleMouseOut).on("click", handleClick);
     _d3.select("body").on("keydown", handleKeyPress);
     tbody.selectAll("tr").on("mouseover", handleMouseOver).on("mouseout", handleMouseOut).on("click", handleClick);
-    // Update the graph within a set interval
-    // setInterval(() => {
-    //     updateGraph();
-    // }, config.renderInterval || 15000);
+    // Select node by ip and add hover effect
     function handleMouseOver(event, element) {
         let selectedIP = getIP(element);
         // Get the node
@@ -25583,6 +25617,7 @@ async function generateView(htmlSource, config) {
     }
     function handleClick(event, element) {
         let selectedIP = getIP(element);
+        let selectedMac = getMac(element);
         // Get the node
         let selectedNode = graphSvg.selectAll("circle").filter(function() {
             return this.getAttribute("ip") === selectedIP;
@@ -25596,7 +25631,7 @@ async function generateView(htmlSource, config) {
         if (selectedNode.getAttribute("selected") === "false") {
             _d3.select(selectedNode).transition().duration(duration).attr("r", selectedRadius).attr("fill", selectedNode.getAttribute("isolated") === "true" ? nodeIsolated : nodeHighlighted).attr("selected", "true");
             _d3.select(selectedRow).transition().duration(duration).style("background-color", rowSelected).style("color", fontSelected).attr("selected", "true");
-            showCommunication(selectedIP);
+            showCommunication(selectedMac);
         }
     }
     function handleKeyPress(event) {
@@ -25608,14 +25643,14 @@ async function generateView(htmlSource, config) {
                 graphSvg.selectAll("circle").filter(function(d) {
                     let selected = this.getAttribute("selected") === "true";
                     if (selected) {
+                        // Isolate by IP and Mac address
                         let selectedIP = this.getAttribute("ip");
                         let selectedMac = this.getAttribute("mac");
-                        // Error handling for isolation OpenWRT
-                        if (selectedIP === openWrtIP) window.confirm("You can't isolate the source node!");
+                        // Error handling for isolation OpenWRT and Home Assistant
+                        if (selectedIP === openWrtIP || selectedIP === hassIP) window.confirm("You can't isolate the source node or Home Assistant!");
                         // Confirm dialog for isolation
-                        let confirmDelete = window.confirm(`Are you sure you want to isolate IP: ${selectedIP} and MAC: ${selectedMac}?`);
-                        if (confirmDelete) // network.isolateDeviceByIp(selectedIP);
-                        _network.isolateDeviceByMac(selectedMac);
+                        let confirmIsolation = window.confirm(`Are you sure you want to isolate MAC address: ${selectedMac}?`);
+                        if (confirmIsolation) _network.isolateDeviceByMac(selectedMac);
                     }
                     return selected;
                 }).transition().duration(duration).attr("fill", nodeIsolated).attr("isolated", "true");
@@ -25625,11 +25660,10 @@ async function generateView(htmlSource, config) {
                     let selected = this.getAttribute("selected") === "true";
                     if (selected) {
                         let selectedIP = this.getAttribute("ip");
-                        let selectedMac = this.getAttribute("mac"); // Assuming the MAC attribute is named 'mac'
+                        let selectedMac = this.getAttribute("mac");
                         // Confirm dialog for including devices
-                        let confirmInclude = window.confirm(`Are you sure you want to include IP: ${selectedIP} and MAC: ${selectedMac}?`);
-                        if (confirmInclude) // network.includeDeviceByIp(selectedIP);
-                        _network.includeDeviceByMac(selectedMac);
+                        let confirmInclusion = window.confirm(`Are you sure you want to include MAC address: ${selectedMac}?`);
+                        if (confirmInclusion) _network.includeDeviceByMac(selectedMac);
                     }
                     return selected;
                 }).transition().duration(duration).attr("r", selectedRadius).attr("fill", nodeHighlighted).attr("isolated", "false");
@@ -25651,41 +25685,22 @@ async function generateView(htmlSource, config) {
         tableSvg.selectAll("tr").transition().duration(duration).style("background-color", rowDefault).style("color", fontDefault);
     }
     // Renders the network flow between devices
-    async function showCommunication(selectedIP) {
-        let communications = config.isDemo ? await (0, _network.getCommunicationsStatic)() : await _network.getCommunications();
-        console.log(communications);
-        let linkedIPs = [];
+    async function showCommunication(selectedMac) {
         try {
-            // Get the connected IP's
-            communications.forEach(function(communication) {
-                console.log(communication);
-                if (communication.src === selectedIP) linkedIPs.push(communication.dst);
-                else if (communication.dst === selectedIP) linkedIPs.push(communication.src);
-            });
-            console.log(linkedIPs);
+            let communications = config.isDemo ? await _network.getDemoCommunications() : await _network.getCommunications();
+            let linkedIdentifiers = [];
+            // Get the connected MAC's
+            for (let communication of communications){
+                if (communication.sourceMac.toUpperCase() === selectedMac) linkedIdentifiers.push(communication.destinationMac);
+                else if (communication.destinationMac.toUpperCase() === selectedMac) linkedIdentifiers.push(communication.sourceMac);
+            }
+            // Highlight nodes
+            graphSvg.selectAll("circle").filter(function() {
+                return linkedIdentifiers.includes(this.getAttribute("mac").toLowerCase());
+            }).transition().duration(duration).attr("r", communicatedRadius).attr("fill", nodeHighlighted);
         } catch (error) {
             console.error("Error generating the connections:", error);
         }
-        // Highlight nodes
-        graphSvg.selectAll("circle").filter(function() {
-            return linkedIPs.includes(this.getAttribute("ip"));
-        }).transition().duration(duration).attr("r", communicatedRadius).attr("fill", nodeHighlighted);
-    // Highlight links
-    // graphSvg
-    //     .selectAll("line")
-    //     .filter(function (line) {
-    //         let sourceIP = line.source.ip;
-    //         let targetIP = line.target.ip;
-    //         // Check if the link is part of the shortest path
-    //         let isPartOfShortestPath = linkedIPs.includes(sourceIP) && linkedIPs.includes(targetIP);
-    //         // Check if the link is the selected IP or connected to it
-    //         let isConnectedToSelectedIP = sourceIP === selectedIP || targetIP === selectedIP;
-    //         return isPartOfShortestPath || isConnectedToSelectedIP;
-    //     })
-    //     .transition()
-    //     .duration(duration)
-    //     .style("stroke", linkHighlighted)
-    //     .attr("stroke-width", linkWidthHighlighted)
     }
     // Returns the IP of a node or a row
     function getIP(element) {
@@ -25693,174 +25708,79 @@ async function generateView(htmlSource, config) {
         else if (element[1]) return element[1];
         else return undefined;
     }
+    // Returns the IP of a node or a row
+    function getMac(element) {
+        if (element.mac) return element.mac;
+        else if (element[2]) return element[2];
+        else return undefined;
+    }
     // Remove existing visualisations if the design is changed within the Home Assistant Editor
     function clearExistingVisualization(svgElement, elementSelector) {
         const svg = _d3.select(svgElement);
         svg.selectAll(elementSelector).remove();
     }
-    // Update the graph after a set interval
-    async function updateGraph() {
-        // Only update if the devices have changed.
-        const newDevices = config.isDemo ? await (0, _network.getDevicesStatic)() : await _network.getDevices();
-        if (JSON.stringify(devices) === JSON.stringify(newDevices)) return;
-        // Save the current selections and positions.
-        let selections = new Map();
-        let positions = new Map();
-        nodes.each(function(d) {
-            selections.set(d.ip, this.getAttribute("selected"));
-            positions.set(d.ip, {
-                x: d.x,
-                y: d.y
-            });
-        });
-        // Update the device information
-        devices = newDevices;
-        data.nodes = devices.map((device)=>{
-            let hostname = device.hostname;
-            let ip = device.ip;
-            let mac = device.mac;
-            let reachable = device.reachable;
-            let host = device.host;
-            return {
-                host: host,
-                name: hostname,
-                ip: ip,
-                mac: mac,
-                reachable: reachable
-            };
-        });
-        // Re-calculate the links based on the new devices array
-        data.links = devices.map((device)=>{
-            return {
-                source: device.host,
-                target: device.ip,
-                marked: false
-            };
-        });
-        // Rebind the new data
-        nodes = nodes.selectAll("circle").data(data.nodes, (d)=>d.ip);
-        links = links.selectAll("line").data(data.links, (d)=>d.source.ip + "-" + d.target.ip);
-        // Remove old nodes
-        nodes.exit().remove();
-        links.exit().remove();
-        // Update existing nodes
-        nodes.attr("fill", (node)=>isolatedDevices.includes(node.ip) ? nodeIsolated : node.reachable ? nodeReachable : nodeUnreachable);
-        // Create new nodes
-        const newNodes = nodes.enter().append("circle");
-        newNodes.attr("r", unselectedRadius);
-        nodes.attr("fill", (node)=>{
-            // Retrieve the selected attribute
-            let isSelected = _d3.select(`circle[ip='${node.ip}']`).attr("selected") === "true";
-            // Return color based on conditions
-            return isSelected ? nodeHighlighted : isolatedDevices.includes(node.ip) ? nodeIsolated : node.reachable ? nodeReachable : nodeUnreachable;
-        }).attr("name", (node)=>node.name).attr("ip", (node)=>node.ip).attr("mac", (node)=>node.mac).attr("host", (node)=>node.host).attr("reachable", (node)=>node.reachable).attr("selected", (node)=>selections.get(node.ip) || false).attr("isolated", (node)=>isolatedDevices.includes(node.ip)).attr("cx", (node)=>positions.has(node.ip) ? positions.get(node.ip).x : graphWidth / 2).attr("cy", (node)=>positions.has(node.ip) ? positions.get(node.ip).y : graphHeight / 2).on("mouseover", handleMouseOver).on("mouseout", handleMouseOut).on("click", handleClick);
-        // Mark source node
-        graphSvg.select("circle[ip='" + openWrtIP + "']").attr("fill", openWrtColor);
-        // Merge the new nodes with the existing nodes
-        nodes = newNodes.merge(nodes);
-        // Create new links
-        let newLinks = links.enter().append("line");
-        newLinks.attr("source", (link)=>link.source).attr("target", (link)=>link.target).style("stroke", linkDefault).attr("stroke-width", linkWidthDefault).attr("marked", "false");
-        // Merge the new links with the existing links
-        links = newLinks.merge(links);
-        // Restart the simulation with the new data
-        simulation.nodes(data.nodes.concat(newNodes.data()));
-        simulation.force("link").links(data.links);
-        simulation.alpha(1).restart();
-        simulation.alpha(1);
-        for(var i = 0; i < 120; ++i)simulation.tick();
-        nodes.attr("cx", function(d) {
-            return d.x;
-        }).attr("cy", function(d) {
-            return d.y;
-        });
-        links.attr("x1", function(d) {
-            return d.source.x;
-        }).attr("y1", function(d) {
-            return d.source.y;
-        }).attr("x2", function(d) {
-            return d.target.x;
-        }).attr("y2", function(d) {
-            return d.target.y;
-        });
-    }
 }
 
 },{"d3":"17XFv","./network":"5uU8a","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"5uU8a":[function(require,module,exports) {
+/**
+ * network.ts - Client-side API for managing network devices.
+ *
+ * Purpose:
+ * This module provides functions to retrieve, manage, and visualize devices in a network.
+ *
+ * Author: Jan Pfeifer
+ *
+ * Notes:
+ * - This file focuses on achieving core functionality.
+ * - Critical security measures like authentication are currently omitted and must be addressed in future iterations.
+ * - Dependencies: Assumes the python server is running responding to specified routes.
+ */ // Imports for the demonstrative network
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
-// Return the devices from the example-json
-parcelHelpers.export(exports, "getDevicesStatic", ()=>getDevicesStatic);
-// Return the devices from the example-json
-parcelHelpers.export(exports, "getDevicesSDN", ()=>getDevicesSDN);
-// Return the communications from the example-json
-parcelHelpers.export(exports, "getCommunicationsStatic", ()=>getCommunicationsStatic);
-// Retrieve devices from the router
+// Retrieve devices from the OpenWRT router
 parcelHelpers.export(exports, "getDevices", ()=>getDevices);
-// Retrieve communications from OVS
+// Retrieve mac-based communications from Open vSwitch
 parcelHelpers.export(exports, "getCommunications", ()=>getCommunications);
-// Retrieve isolated devices from the router
+// Retrieve isolated devices from the Open vSwitch
 parcelHelpers.export(exports, "getIsolatedDevices", ()=>getIsolatedDevices);
-// Sends a api-request to isolate the device with the given ip from the network.
-parcelHelpers.export(exports, "isolateDeviceByIp", ()=>isolateDeviceByIp);
-// Sends a api-request to remove the isolation of the device with the given ip.
-parcelHelpers.export(exports, "includeDeviceByIp", ()=>includeDeviceByIp);
-// Sends an api-request to isolate the device with the given MAC address from the network.
+// Isolate the device with the given MAC address
 parcelHelpers.export(exports, "isolateDeviceByMac", ()=>isolateDeviceByMac);
-// Sends an api-request to remove the isolation of the device with the given MAC address.
+// Include the device with the given MAC address
 parcelHelpers.export(exports, "includeDeviceByMac", ()=>includeDeviceByMac);
-var _devicesDemoJson = require("./data/devices-demo.json");
-var _devicesDemoJsonDefault = parcelHelpers.interopDefault(_devicesDemoJson);
-var _devicesSdnJson = require("./data/devices_sdn.json");
+/*
+    The following methods are used for the demo network and testing.
+*/ // Return the devices from small demo network with 20 devices
+parcelHelpers.export(exports, "getSmallNetwork", ()=>getSmallNetwork);
+// Return the devices from medium sized demo network with 100 devices
+parcelHelpers.export(exports, "getMediumNetwork", ()=>getMediumNetwork);
+// Return the devices from large demo network 250 with devices
+parcelHelpers.export(exports, "getLargeNetwork", ()=>getLargeNetwork);
+// Return the devices for the small demo network using the sdn structure
+parcelHelpers.export(exports, "getDemoSdn", ()=>getDemoSdn);
+// Return the communication flow for the small demo network
+parcelHelpers.export(exports, "getDemoCommunications", ()=>getDemoCommunications);
+var _devicesSmallJson = require("./demo/devices-small.json");
+var _devicesSmallJsonDefault = parcelHelpers.interopDefault(_devicesSmallJson);
+var _devicesMidJson = require("./demo/devices-mid.json");
+var _devicesMidJsonDefault = parcelHelpers.interopDefault(_devicesMidJson);
+var _devicesLargeJson = require("./demo/devices-large.json");
+var _devicesLargeJsonDefault = parcelHelpers.interopDefault(_devicesLargeJson);
+var _devicesSdnJson = require("./demo/devices-sdn.json");
 var _devicesSdnJsonDefault = parcelHelpers.interopDefault(_devicesSdnJson);
-var _communicationsJson = require("./data/communications.json");
+var _communicationsJson = require("./demo/communications.json");
 var _communicationsJsonDefault = parcelHelpers.interopDefault(_communicationsJson);
-function getDevicesStatic() {
-    let deviceList = [];
-    for (let device of (0, _devicesDemoJsonDefault.default)){
-        let deviceEntry = {
-            hostname: device.hostname,
-            ip: device.ip,
-            mac: device.mac,
-            reachable: device.reachable,
-            host: device.host
-        };
-        deviceList.push(deviceEntry);
-    }
-    return deviceList;
-}
-function getDevicesSDN() {
-    let deviceList = [];
-    for (let device of (0, _devicesSdnJsonDefault.default)){
-        let deviceEntry = {
-            hostname: device.hostname,
-            ip: device.ip,
-            mac: device.mac,
-            reachable: device.reachable,
-            host: device.host
-        };
-        deviceList.push(deviceEntry);
-    }
-    return deviceList;
-}
-function getCommunicationsStatic() {
-    let communicationList = [];
-    for (let communication of (0, _communicationsJsonDefault.default).flow_table){
-        let communicationEntry = {
-            src: communication.match.ipv4_src,
-            dst: communication.match.ipv4_dst
-        };
-        communicationList.push(communicationEntry);
-    }
-    return communicationList;
-}
-function getDevices() {
+// Contains the api url entry point.
+// Change to homeassistant.local in smart home environment or localhost in docker environment.
+const homeAssistant = "http://localhost:5000";
+function getDevices(openWrtIP) {
     let processedDeviceList = [];
-    return fetch("http://localhost:5000/devices").then((response)=>response.json()).then((deviceList)=>{
+    return fetch(homeAssistant + "/devices").then((response)=>response.json())// Push the source node and add other devices to the list
+    .then((deviceList)=>{
+        // todo
         let sourceNode = {
             hostname: "OpenWrt",
-            ip: "192.168.1.1",
-            mac: "12:34:45:67:89",
+            ip: openWrtIP,
+            mac: "--:--:--:--:--:--",
             reachable: "true",
             host: "192.168.1.1"
         };
@@ -25883,13 +25803,13 @@ function getDevices() {
 }
 function getCommunications() {
     let communicationList = [];
-    return fetch("http://localhost:5000/communications").then((response)=>response.json()).then((communicationData)=>{
+    return fetch(homeAssistant + "/communications").then((response)=>response.json()).then((communicationData)=>{
         // Process the communicationData as needed
         for (let communication of communicationData){
-            let communicationEntry = [
-                communication.match.ipv4_src,
-                communication.match.ipv4_dst
-            ];
+            let communicationEntry = {
+                sourceMac: communication.source_mac,
+                destinationMac: communication.destination_mac
+            };
             communicationList.push(communicationEntry);
         }
         return communicationList;
@@ -25900,36 +25820,20 @@ function getCommunications() {
     });
 }
 function getIsolatedDevices() {
-    return fetch("http://localhost:5000/isolated_devices").then((response)=>response.json()).then((deviceList)=>{
-        let isolatedDeviceList = deviceList.map((device)=>device.ip);
-        return isolatedDeviceList;
-    }).catch((error)=>{
-        // Handle any errors that occur during the request
-        console.error("Error:", error);
-        return [];
-    });
-}
-function isolateDeviceByIp(selectedIP) {
-    console.log(selectedIP + " is now isolated from the network.");
-    return fetch("http://localhost:5000/isolate_ip/" + selectedIP, {
-        method: "POST"
-    }).then((response)=>response.json()).catch((error)=>{
-        // Handle any errors that occur during the request
-        console.error("Error:", error);
-    });
-}
-function includeDeviceByIp(selectedIP) {
-    console.log(selectedIP + " is no longer isolated.");
-    return fetch("http://localhost:5000/include_ip/" + selectedIP, {
-        method: "POST"
-    }).then((response)=>response.json()).catch((error)=>{
-        // Handle any errors that occur during the request
-        console.error("Error:", error);
-    });
-}
+    return [];
+/*return fetch(homeAssistant + '/isolated_devices')
+        .then(response => response.json())
+        .then(deviceList => {
+            let isolatedDeviceList = deviceList.map(device => device.ip);
+            return isolatedDeviceList;
+        })
+        .catch(error => {
+            // Handle any errors that occur during the request
+            console.error('Error:', error);
+            return [];
+        });*/ }
 function isolateDeviceByMac(selectedMac) {
-    console.log(selectedMac + " is now isolated from the network.");
-    return fetch("http://localhost:5000/isolate_mac/" + selectedMac, {
+    return fetch(homeAssistant + "/isolate_mac/" + selectedMac, {
         method: "POST"
     }).then((response)=>response.json()).catch((error)=>{
         // Handle any errors that occur during the request
@@ -25938,25 +25842,107 @@ function isolateDeviceByMac(selectedMac) {
 }
 function includeDeviceByMac(selectedMac) {
     console.log(selectedMac + " is no longer isolated.");
-    return fetch("http://localhost:5000/include_mac/" + selectedMac, {
+    return fetch(homeAssistant + "/include_mac/" + selectedMac, {
         method: "POST"
     }).then((response)=>response.json()).catch((error)=>{
         // Handle any errors that occur during the request
         console.error("Error:", error);
     });
 }
+function getSmallNetwork() {
+    let deviceList = [];
+    for (let device of (0, _devicesSmallJsonDefault.default)){
+        let deviceEntry = {
+            hostname: device.hostname,
+            ip: device.ip,
+            mac: device.mac,
+            reachable: device.reachable,
+            host: device.host
+        };
+        deviceList.push(deviceEntry);
+    }
+    return deviceList;
+}
+function getMediumNetwork() {
+    let deviceList = [];
+    for (let device of (0, _devicesMidJsonDefault.default)){
+        let deviceEntry = {
+            hostname: device.hostname,
+            ip: device.ip,
+            mac: device.mac,
+            reachable: device.reachable,
+            host: device.host
+        };
+        deviceList.push(deviceEntry);
+    }
+    return deviceList;
+}
+function getLargeNetwork() {
+    let deviceList = [];
+    for (let device of (0, _devicesLargeJsonDefault.default)){
+        let deviceEntry = {
+            hostname: device.hostname,
+            ip: device.ip,
+            mac: device.mac,
+            reachable: device.reachable,
+            host: device.host
+        };
+        deviceList.push(deviceEntry);
+    }
+    return deviceList;
+}
+function getDemoSdn() {
+    let deviceList = [];
+    for (let device of (0, _devicesSdnJsonDefault.default)){
+        let deviceEntry = {
+            hostname: device.hostname,
+            ip: device.ip,
+            mac: device.mac,
+            reachable: device.reachable,
+            host: device.host
+        };
+        deviceList.push(deviceEntry);
+    }
+    return deviceList;
+}
+function getDemoCommunications() {
+    let communicationList = [];
+    for (let communication of (0, _communicationsJsonDefault.default).flow_table){
+        let communicationEntry = {
+            src: communication.match.ipv4_src,
+            dst: communication.match.ipv4_dst
+        };
+        communicationList.push(communicationEntry);
+    }
+    return communicationList;
+}
 
-},{"./data/devices-demo.json":"clm5S","./data/devices_sdn.json":"hpbTf","./data/communications.json":"aA0YQ","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"clm5S":[function(require,module,exports) {
-module.exports = JSON.parse('[{"dev":"br0","stale":true,"mac":"1a:2b:3c:4d:5e:6f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.1","hostname":"OpenWRT","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"3e:8b:9e:ad:be:cf","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.2","hostname":"Switch_2","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"da:eb:fc:1d:2e:3f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.3","hostname":"Switch_3","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"4a:5b:6c:7d:8e:9f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.4","hostname":"Switch_4","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"af:be:ca:fe:b0:0b","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.50","hostname":"Laptop","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"1f:2e:3d:4c:5b:6a","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.51","hostname":"Android Phone","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"cc:dd:ee:ff:aa:bb","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.52","hostname":"Drucker","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"1b:2c:3d:4e:5f:6a","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.53","hostname":"Home Assistant","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"ab:cd:ef:12:34:56","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.60","hostname":"Lampe_0","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:ab:cd:ef","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.61","hostname":"Lampe_1","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"ab:cd:ef:12:34:56","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.62","hostname":"Lampe_2","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"1a:2b:3c:4d:5e:6f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.63","hostname":"Lampe_3","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"7a:8b:9c:ad:be:cf","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.64","hostname":"Lampe_4","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"da:eb:fc:1d:2e:3f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.65","hostname":"Lampe_5","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"4a:5b:6c:7d:8e:9f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.70","hostname":"Sensor_0","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"af:be:ca:fe:b0:0b","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.71","hostname":"Sensor_1","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"1f:2e:3d:4c:5b:6a","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.72","hostname":"Sensor_2","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.73","hostname":"Sensor_3","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.74","hostname":"Sensor_4","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.75","hostname":"Sensor_5","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.101","hostname":"Isolated_0","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.102","hostname":"Isolated_1","host":"192.168.1.1"}]');
-
-},{}],"hpbTf":[function(require,module,exports) {
-module.exports = JSON.parse('[{"dev":"br0","stale":true,"mac":"1a:2b:3c:4d:5e:6f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.1","hostname":"OpenWRT","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"3e:8b:9e:ad:be:cf","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.2","hostname":"Switch_2","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"da:eb:fc:1d:2e:3f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.3","hostname":"Switch_3","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"af:be:ca:fe:b0:0b","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.50","hostname":"Laptop","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"1f:2e:3d:4c:5b:6a","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.51","hostname":"Printer","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"cc:dd:ee:ff:aa:bb","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.52","hostname":"Android Phone","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"1b:2c:3d:4e:5f:6a","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.53","hostname":"Home Assistant","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"ab:cd:ef:12:34:56","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.60","hostname":"Lampe_0","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"12:34:56:ab:cd:ef","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.61","hostname":"Lampe_1","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"ab:cd:ef:12:34:56","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.62","hostname":"Lampe_2","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"1a:2b:3c:4d:5e:6f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.63","hostname":"Lampe_3","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"7a:8b:9c:ad:be:cf","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.64","hostname":"Lampe_4","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"da:eb:fc:1d:2e:3f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.65","hostname":"Lampe_5","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"4a:5b:6c:7d:8e:9f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.70","hostname":"Sensor_0","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"af:be:ca:fe:b0:0b","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.71","hostname":"Sensor_1","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"1f:2e:3d:4c:5b:6a","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.72","hostname":"Sensor_2","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.73","hostname":"Sensor_3","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.74","hostname":"Sensor_4","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.75","hostname":"Sensor_5","host":"192.168.1.3"}]');
-
-},{}],"aA0YQ":[function(require,module,exports) {
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./demo/communications.json":"azGuA","./demo/devices-sdn.json":"lWgdJ","./demo/devices-small.json":"cPrew","./demo/devices-mid.json":"8wwea","./demo/devices-large.json":"j7Zha"}],"azGuA":[function(require,module,exports) {
 module.exports = JSON.parse('{"flow_table":[{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.2"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.3"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.4"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.3","ipv4_dst":"192.168.1.4"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.50","ipv4_dst":"192.168.1.53"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.52","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.1","ipv4_dst":"192.168.1.52"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.51","ipv4_dst":"192.168.1.52"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.60","ipv4_dst":"192.168.1.63"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.70","ipv4_dst":"192.168.1.75"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.101","ipv4_dst":"192.168.1.102"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.2","ipv4_dst":"192.168.1.50"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.52","ipv4_dst":"192.168.1.70"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.60","ipv4_dst":"192.168.1.64"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.53","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.3","ipv4_dst":"192.168.1.2"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.64","ipv4_dst":"192.168.1.65"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.4","ipv4_dst":"192.168.1.101"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.75","ipv4_dst":"192.168.1.1"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.51","ipv4_dst":"192.168.1.53"},"actions":["allow_packet"]},{"match":{"ipv4_src":"192.168.1.61","ipv4_dst":"192.168.1.62"},"actions":["allow_packet"]}]}');
 
+},{}],"lWgdJ":[function(require,module,exports) {
+module.exports = JSON.parse('[{"dev":"br0","stale":true,"mac":"1a:2b:3c:4d:5e:6f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.1","hostname":"OpenWRT","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"3e:8b:9e:ad:be:cf","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.2","hostname":"Switch_2","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"da:eb:fc:1d:2e:3f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.3","hostname":"Switch_3","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"af:be:ca:fe:b0:0b","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.50","hostname":"Laptop","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"1f:2e:3d:4c:5b:6a","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.51","hostname":"Printer","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"cc:dd:ee:ff:aa:bb","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.52","hostname":"Android Phone","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"1b:2c:3d:4e:5f:6a","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.53","hostname":"Home Assistant","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"ab:cd:ef:12:34:56","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.60","hostname":"Lampe_0","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"12:34:56:ab:cd:ef","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.61","hostname":"Lampe_1","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"ab:cd:ef:12:34:56","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.62","hostname":"Lampe_2","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"1a:2b:3c:4d:5e:6f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.63","hostname":"Lampe_3","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"7a:8b:9c:ad:be:cf","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.64","hostname":"Lampe_4","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"da:eb:fc:1d:2e:3f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.65","hostname":"Lampe_5","host":"192.168.1.2"},{"dev":"br0","stale":true,"mac":"4a:5b:6c:7d:8e:9f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.70","hostname":"Sensor_0","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"af:be:ca:fe:b0:0b","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.71","hostname":"Sensor_1","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"1f:2e:3d:4c:5b:6a","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.72","hostname":"Sensor_2","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.73","hostname":"Sensor_3","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.74","hostname":"Sensor_4","host":"192.168.1.3"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.75","hostname":"Sensor_5","host":"192.168.1.3"}]');
+
+},{}],"cPrew":[function(require,module,exports) {
+module.exports = JSON.parse('[{"dev":"br0","stale":true,"mac":"1a:2b:3c:4d:5e:6f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.1","hostname":"OpenWRT","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"3e:8b:9e:ad:be:cf","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.2","hostname":"Switch_2","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"da:eb:fc:1d:2e:3f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.3","hostname":"Switch_3","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"4a:5b:6c:7d:8e:9f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.4","hostname":"Switch_4","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"af:be:ca:fe:b0:0b","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.50","hostname":"Laptop","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"1f:2e:3d:4c:5b:6a","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.51","hostname":"Android Phone","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"cc:dd:ee:ff:aa:bb","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.52","hostname":"Drucker","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"1b:2c:3d:4e:5f:6a","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.53","hostname":"Home Assistant","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"ab:cd:ef:12:34:56","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.60","hostname":"Lampe_0","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:ab:cd:ef","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.61","hostname":"Lampe_1","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"ab:cd:ef:12:34:56","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.62","hostname":"Lampe_2","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"1a:2b:3c:4d:5e:6f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.63","hostname":"Lampe_3","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"7a:8b:9c:ad:be:cf","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.64","hostname":"Lampe_4","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"da:eb:fc:1d:2e:3f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.65","hostname":"Lampe_5","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"4a:5b:6c:7d:8e:9f","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.70","hostname":"Sensor_0","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"af:be:ca:fe:b0:0b","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.71","hostname":"Sensor_1","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"1f:2e:3d:4c:5b:6a","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.72","hostname":"Sensor_2","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"13:3d:56:ab:ea:cd","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.73","hostname":"Sensor_3","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"a3:b3:f2:87:10:43","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.74","hostname":"Sensor_4","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"12:34:56:78:10:12","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.75","hostname":"Sensor_5","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"14:24:e9:a8:1a:c2","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":true,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.101","hostname":"Isolated_0","host":"192.168.1.1"},{"dev":"br0","stale":true,"mac":"a2:3e:f6:d8:c0:b2","noarp":false,"permanent":false,"failed":false,"family":4,"proxy":false,"router":false,"reachable":false,"probe":false,"delay":false,"incomplete":false,"ip":"192.168.1.102","hostname":"Isolated_1","host":"192.168.1.1"}]');
+
+},{}],"8wwea":[function(require,module,exports) {
+module.exports = JSON.parse('[{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.1","hostname":"OpenWRT","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.2","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.3","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.4","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.5","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.6","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.7","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.8","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.9","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.10","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.11","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.12","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.13","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.14","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.15","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.16","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.17","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.18","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.19","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.20","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.21","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.22","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.23","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.24","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.25","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.26","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.27","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.28","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.29","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.30","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.31","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.32","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.33","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.34","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.35","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.35","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.36","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.37","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.38","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.38","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.39","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.41","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.42","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.42","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.43","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.44","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.45","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.46","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.47","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.48","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.49","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.50","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.2","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.3","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.4","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.5","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.6","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.7","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.8","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.9","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.10","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.11","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.12","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.13","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.14","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.15","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.16","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.17","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.18","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.19","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.20","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.21","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.22","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.23","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.24","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.25","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.26","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.27","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.28","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.29","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.30","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.31","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.32","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.33","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.34","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.35","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.35","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.36","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.37","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.38","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.38","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.39","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.41","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.42","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.42","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.43","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.44","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.45","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.46","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.47","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.48","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.49","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.50","hostname":"","host":"192.168.1.1"}]');
+
+},{}],"j7Zha":[function(require,module,exports) {
+module.exports = JSON.parse('[{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.1","hostname":"OpenWRT","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.2","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.3","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.4","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.5","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.6","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.7","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.8","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.9","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.10","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.11","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.12","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.13","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.14","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.15","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.16","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.17","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.18","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.19","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.20","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.21","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.22","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.23","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.24","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.25","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.26","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.27","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.28","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.29","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.30","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.31","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.32","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.33","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.34","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.35","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.35","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.36","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.37","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.38","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.38","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.39","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.41","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.42","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.42","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.43","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.44","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.45","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.46","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.47","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.48","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.49","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.1.50","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.2","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.3","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.4","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.5","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.6","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.7","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.8","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.9","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.10","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.11","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.12","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.13","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.14","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.15","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.16","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.17","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.18","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.19","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.20","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.21","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.22","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.23","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.24","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.25","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.26","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.27","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.28","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.29","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.30","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.31","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.32","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.33","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.34","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.35","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.35","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.36","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.37","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.38","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.38","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.39","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.41","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.42","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.42","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.43","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.44","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.45","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.46","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.47","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.48","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.49","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.2.50","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.2","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.3","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.4","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.5","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.6","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.7","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.8","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.9","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.10","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.11","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.12","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.13","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.14","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.15","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.16","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.17","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.18","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.19","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.20","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.21","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.22","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.23","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.24","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.25","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.26","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.27","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.28","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.29","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.30","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.31","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.32","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.33","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.34","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.35","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.35","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.36","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.37","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.38","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.38","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.39","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.41","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.42","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.42","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.43","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.44","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.45","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.46","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.47","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.48","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.49","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.3.50","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.2","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.3","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.4","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.5","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.6","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.7","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.8","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.9","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.10","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.11","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.12","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.13","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.14","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.15","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.16","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.17","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.18","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.19","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.20","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.21","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.22","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.23","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.24","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.25","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.26","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.27","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.28","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.29","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.30","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.31","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.32","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.33","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.34","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.35","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.35","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.36","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.37","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.38","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.38","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.39","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.41","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.42","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.42","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.43","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.44","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.45","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.46","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.47","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.48","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.49","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.4.50","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.2","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.3","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.4","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.5","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.6","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.7","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.8","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.9","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.10","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.11","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.12","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.13","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.14","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.15","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.16","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.17","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.18","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.19","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.20","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.21","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.22","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.23","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.24","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.25","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.26","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.27","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.28","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.29","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.30","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.31","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.32","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.33","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.34","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.35","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.35","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.36","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.37","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.38","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.38","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.39","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.41","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.42","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.42","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.43","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.44","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.45","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.46","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.47","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.48","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.49","hostname":"","host":"192.168.1.1"},{"mac":"1a:2b:3c:4d:5e:6f","reachable":true,"ip":"192.168.5.50","hostname":"","host":"192.168.1.1"}]');
+
 },{}],"87WFb":[function(require,module,exports) {
-var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+/**
+ * editor.ts - Configuration editor for the Network Visualization card.
+ *
+ * Purpose:
+ * Provides an interface for Home Assistant's UI Editor, allowing users to customize
+ * the visual properties and behaviors of the Network Visualization card. This includes
+ * aspects like colors, intervals, sizes, and network settings.
+ *
+ * Author: Jan Pfeifer
+ */ var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "NetworkVisualizationEditor", ()=>NetworkVisualizationEditor);
 var _tsDecorate = require("@swc/helpers/_/_ts_decorate");
@@ -25983,192 +25969,221 @@ class NetworkVisualizationEditor extends (0, _lit.LitElement) {
     })();
     render() {
         return (0, _lit.html)`
-      <form class="table" id="editor-table>
-      <h3>General:</h3>
-        <div class="row">
-          <label class="label cell" for="header">Header:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="header" value="${this._config.header}"
+    <form class="table" id="editor-table">
+    <h3>General:</h3>
+    <div class="row">
+       <label class="label cell" for="header">Header:</label>
+       <input
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="header" value="${this._config.header}"
           ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="renderInterval">Render Interval in sec:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="renderInterval" value="${this._config.renderInterval}"
+    </div>
+    <div class="row">
+       <label class="label cell" for="renderInterval">Render Interval in ms:</label>
+       <input
+          type="range"
+          min="1000" max="120000" step="1000"
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="renderInterval" value="${this._config.renderInterval}"
           ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="graphForce">Graph Force:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="graphForce" value="${this._config.graphForce}"
+       <span id="renderIntervalValue">${this._config.renderInterval}</span>
+    </div>
+    <div class="row">
+       <label class="label cell" for="graphForce">Graph Force:</label>
+       <input
+          type="range"
+          min="-1000" max="1000" step="50"
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="graphForce" value="${this._config.graphForce}"
           ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="duration">Animation Duration in ms:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="duration" value="${this._config.duration}"
+       <span id="graphForceValue">${this._config.graphForce}</span>
+    </div>
+    <div class="row">
+       <label class="label cell" for="duration">Animation Duration in ms:</label>
+       <input
+          type="range"
+          min="0" max="1000" step="50"
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="duration" value="${this._config.duration}"
           ></input>
-        </div>
-
-        <h3>Network:</h3>
-        <div class="row">
-        <label class="label cell" for="openWrtIP">OpenWrt IP:</label>
-        <input
+       <span id="durationValue">${this._config.duration}</span>
+    </div>
+    <h3>Network:</h3>
+    <div class="row">
+       <label class="label cell" for="openWrtIP">OpenWrt IP:</label>
+       <input
           @change="${this.handleChangedEvent}"
           class="value cell" id="openWrtIP" value="${this._config.openWrtIP}"
-        ></input>
-      </div>
-      <div class="row">
-      <label class="label cell" for="mode">Network Mode:</label>
-      <select
-        id="mode"
-        class="value cell"
-        @change="${this.handleChangedEvent}">
-        <option value="software" ?selected="${this._config.mode === "software"}">Software</option>
-        <option value="physical" ?selected="${this._config.mode === "physical"}">Physical</option>
-      </select>
-      </div>
-      <div class="row">
-        <label class="label cell" for="isDemo">Demo Network:</label>
-        <input type="checkbox"
+          ></input>
+    </div>
+    <div class="row">
+    <label class="label cell" for="hassIP">Home Assistant IP:</label>
+    <input
+       @change="${this.handleChangedEvent}"
+       class="value cell" id="hassIP" value="${this._config.hassIP}"
+       ></input>
+    </div>
+    <div class="row">
+       <label class="label cell" for="mode">Network Mode:</label>
+       <select
+          id="mode"
+          class="value cell"
+          @change="${this.handleChangedEvent}">
+          <option value="software" ?selected="${this._config.mode === "software"}">Software</option>
+          <option value="physical" ?selected="${this._config.mode === "physical"}">Physical</option>
+       </select>
+    </div>
+    <div class="row">
+       <label class="label cell" for="isDemo">Demo Network:</label>
+       <input type="checkbox"
           @change="${this.handleChangedEvent}"
           class="value cell" id="isDemo"
           ?checked="${this._config.isDemo}"
-        ></input>
-        <span class="slider round"></span>
-        </label>
-      </div>
-
-        <h3>Color:</h3>
-        <div class="row">
-          <label class="label cell" for="openWrtColor">OpenWrt Color:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="openWrtColor" value="${this._config.openWrtColor}"
           ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="nodeReachable">Node Reachable Color:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="nodeReachable" value="${this._config.nodeReachable}"
+       <span class="slider round"></span>
+    </div>
+    <h3>Color:</h3>
+    <div class="row">
+       <label class="label cell" for="openWrtColor">OpenWrt Color:</label>
+       <input
+          type="color"
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="openWrtColor" value="${this._config.openWrtColor}"
           ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="nodeUnreachable">Node Unreachable Color:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="nodeUnreachable" value="${this._config.nodeUnreachable}"
+    </div>
+    <div class="row">
+       <label class="label cell" for="nodeReachable">Node Reachable Color:</label>
+       <input
+          type="color"
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="nodeReachable" value="${this._config.nodeReachable}"
           ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="nodeHighlighted">Node Highlighted Color:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="nodeHighlighted" value="${this._config.nodeHighlighted}"
+    </div>
+    <div class="row">
+       <label class="label cell" for="nodeUnreachable">Node Unreachable Color:</label>
+       <input
+          type="color"
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="nodeUnreachable" value="${this._config.nodeUnreachable}"
           ></input>
-        </div>
-        <div class="row">
-        <label class="label cell" for="nodeIsolated">Node Isolated Color:</label>
-        <input
+    </div>
+    <div class="row">
+       <label class="label cell" for="nodeHighlighted">Node Highlighted Color:</label>
+       <input
+          type="color"
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="nodeHighlighted" value="${this._config.nodeHighlighted}"
+          ></input>
+    </div>
+    <div class="row">
+       <label class="label cell" for="nodeIsolated">Node Isolated Color:</label>
+       <input
+          type="color"
           @change="${this.handleChangedEvent}"
           class="value cell" id="nodeIsolated" value="${this._config.nodeIsolated}"
-        ></input>
-      </div>
-        <div class="row">
-          <label class="label cell" for="rowDefault">Row Default Color:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="rowDefault" value="${this._config.rowDefault}"
           ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="rowSelected">Row Selected Color:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="rowSelected" value="${this._config.rowSelected}"
+    </div>
+    <div class="row">
+       <label class="label cell" for="rowDefault">Row Default Color:</label>
+       <input
+          type="color"
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="rowDefault" value="${this._config.rowDefault}"
           ></input>
-        </div>
-        <div class="row">
-        <label class="label cell" for="fontDefault">Default Font Color:</label>
-        <input
+    </div>
+    <div class="row">
+       <label class="label cell" for="rowSelected">Row Selected Color:</label>
+       <input
+          type="color"
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="rowSelected" value="${this._config.rowSelected}"
+          ></input>
+    </div>
+    <div class="row">
+       <label class="label cell" for="fontDefault">Default Font Color:</label>
+       <input
+          type="color"
           @change="${this.handleChangedEvent}"
           class="value cell" id="fontDefault" value="${this._config.fontDefault}"
-        ></input>
-      </div>
-      <div class="row">
-        <label class="label cell" for="fontSelected">Selected Font Color:</label>
-        <input
+          ></input>
+    </div>
+    <div class="row">
+       <label class="label cell" for="fontSelected">Selected Font Color:</label>
+       <input
+          type="color"
           @change="${this.handleChangedEvent}"
           class="value cell" id="fontSelected" value="${this._config.fontSelected}"
-        ></input>
-      </div>
-      <div class="row">
-        <label class="label cell" for="linkDefault">Default Link Color:</label>
-        <input
+          ></input>
+    </div>
+    <div class="row">
+       <label class="label cell" for="linkDefault">Default Link Color:</label>
+       <input
+          type="color"
           @change="${this.handleChangedEvent}"
           class="value cell" id="linkDefault" value="${this._config.linkDefault}"
-        ></input>
-      </div>
-      <div class="row">
-        <label class="label cell" for="linkHighlighted">Highlighted Link Color:</label>
-        <input
+          ></input>
+    </div>
+    <div class="row">
+       <label class="label cell" for="linkHighlighted">Highlighted Link Color:</label>
+       <input
+          type="color"
           @change="${this.handleChangedEvent}"
           class="value cell" id="linkHighlighted" value="${this._config.linkHighlighted}"
-        ></input>
-      </div>
-
-        <h3>Shape:</h3>
-        <!--
-        <div class="row">
-          <label class="label cell" for="shape">Shape:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="shape" value="${this._config.shape}"
           ></input>
-        </div>
-        -->
-        <div class="row">
-          <label class="label cell" for="unselectedRadius">Unselected Radius:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="unselectedRadius" value="${this._config.unselectedRadius}"
+    </div>
+    <h3>Shape:</h3>
+    <div class="row">
+       <label class="label cell" for="unselectedRadius">Unselected Radius:</label>
+       <input
+          type="range"
+          min="1" max="50" step="1"
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="unselectedRadius" value="${this._config.unselectedRadius}"
           ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="communicatedRadius">Communicated Radius:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="communicatedRadius" value="${this._config.communicatedRadius}"
+       <span id="unselectedRadiusValue">${this._config.unselectedRadius}</span>
+    </div>
+    <div class="row">
+       <label class="label cell" for="communicatedRadius">Communicated Radius:</label>
+       <input
+          type="range"
+          min="1" max="50" step="1"
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="communicatedRadius" value="${this._config.communicatedRadius}"
           ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="selectedRadius">Selected Radius:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="selectedRadius" value="${this._config.selectedRadius}"
+       <span id="communicatedRadiusValue">${this._config.communicatedRadius}</span>
+    </div>
+    <div class="row">
+       <label class="label cell" for="selectedRadius">Selected Radius:</label>
+       <input
+          type="range"
+          min="1" max="50" step="1"
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="selectedRadius" value="${this._config.selectedRadius}"
           ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="linkWidthDefault">Default Link Width:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="linkWidthDefault" value="${this._config.linkWidthDefault}"
+       <span id="selectedRadiusValue">${this._config.selectedRadius}</span>
+    </div>
+    <div class="row">
+       <label class="label cell" for="linkWidthDefault">Default Link Width:</label>
+       <input
+          type="range"
+          min="0.1" max="10" step="0.1"
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="linkWidthDefault" value="${this._config.linkWidthDefault}"
           ></input>
-        </div>
-        <div class="row">
-          <label class="label cell" for="linkWidthHighlighted">Highlighted Link Width:</label>
-          <input
-            @change="${this.handleChangedEvent}"
-            class="value cell" id="linkWidthHighlighted" value="${this._config.linkWidthHighlighted}"
+       <span id="linkWidthDefaultValue">${this._config.linkWidthDefault}</span>
+    </div>
+    <div class="row">
+       <label class="label cell" for="linkWidthHighlighted">Highlighted Link Width:</label>
+       <input
+          type="range"
+          min="0.1" max="10" step="0.1"
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="linkWidthHighlighted" value="${this._config.linkWidthHighlighted}"
           ></input>
-        </div>
-      </form>
-    `;
+       <span id="linkWidthHighlightedValue">${this._config.linkWidthHighlighted}</span>
+    </div>
+ </form>
+`;
     }
     handleChangedEvent(changedEvent) {
         const target = changedEvent.target;
@@ -26184,6 +26199,9 @@ class NetworkVisualizationEditor extends (0, _lit.LitElement) {
                 break;
             case "openWrtIP":
                 newConfig.openWrtIP = target.value;
+                break;
+            case "hassIP":
+                newConfig.hassIP = target.value;
                 break;
             case "mode":
                 newConfig.mode = target.value;
@@ -26249,7 +26267,7 @@ class NetworkVisualizationEditor extends (0, _lit.LitElement) {
                 newConfig.shape = target.value;
                 break;
             default:
-                break; // Do nothing if the target.id doesn't match any case
+                break;
         }
         const messageEvent = new CustomEvent("config-changed", {
             detail: {

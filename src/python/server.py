@@ -20,58 +20,14 @@ with open("../../../../config/secrets.yaml", "r") as file:
 ROUTER_IP = secrets["router_ip"]
 ROUTER_USER = secrets["router_user"]
 ROUTER_PASSWORD = secrets["router_password"]
-RYU_DATAPATH = secrets.get("ryu_datapath") or get_switch_dpid()
 
+# OVS switch details
+RYU_ADDRESS = secrets["ryu_address"]
 RYU_PORT = secrets["ryu_port"]
-
-# MQTT broker details
-BROKER_ADDRESS = secrets["broker_address"]
-BROKER_PORT = secrets["broker_port"]
-TOPIC = secrets["topic"]
 
 # OVS switch details
 SWITCH_ADDRESS = secrets["switch_address"]
 SWITCH_PORT = secrets["switch_port"]
-
-# Extension for JSON support
-BLOCKED_IPS = []
-BLOCKED_IP_JSON = "src/data/isolated_devices.json"
-
-
-def save_ips_to_file(ip_list, filename):
-    """Retrieves a list of all connected devices."""
-    with open(filename, "w") as file:
-        json.dump(ip_list, file)
-
-
-def load_ips_from_file(filename):
-    """Retrieves a list of all connected devices."""
-    try:
-        with open(filename, "r") as file:
-            return json.load(file)
-    except FileNotFoundError:
-        return []
-
-
-def get_switch_dpid():
-    """Get the DPID of the switch."""
-    try:
-        url = f"http://{ROUTER_IP}:{RYU_PORT}/stats/switches"
-        response = requests.get(url, timeout=5)
-
-        if response.ok:
-            switches = response.json()
-            if switches:
-                return switches[0]
-            else:
-                print("No switches found.")
-                return None
-        else:
-            print(f"Failed to retrieve switches. Status code: {response.status_code}")
-            return None
-    except Exception as error:
-        print(f"Error while retrieving DPID: {str(error)}")
-        return None
 
 
 @app.route("/devices")
@@ -80,7 +36,6 @@ def get_devices():
     try:
         router = OpenWrtRpc(ROUTER_IP, ROUTER_USER, ROUTER_PASSWORD)
         result = router.get_all_connected_devices(only_reachable=False)
-        print(dir(router))
 
         device_list = [device._asdict() for device in result]
         return jsonify(device_list)
@@ -89,78 +44,65 @@ def get_devices():
         return jsonify({"error": str(error)}), 500
 
 
-@app.route("/communications")
+@app.route("/communications", methods=["GET"])
 def get_communications():
-    """Retrieves a list of all communications."""
+    # Use the Ryu REST API to get the flow rules for the specific DPID
+    RYU_DATAPATH = get_switch_dpid()
+
+    if not RYU_DATAPATH:
+        print("No DPID found.")
+        return jsonify({"status": "error", "message": "No DPID found."}), 500
+
     try:
-        if not RYU_DATAPATH:
-            return jsonify({"error": "Could not retrieve switch DPID"}), 500
+        response = requests.get(
+            f"http://{RYU_ADDRESS}:{RYU_PORT}/stats/flow/{RYU_DATAPATH}"
+        )
+        response.raise_for_status()
+        flows = response.json()
 
-        url = f"http://{ROUTER_IP}:{RYU_PORT}/stats/flow/{RYU_DATAPATH}"
-        response = requests.get(url, timeout=5)
+        flows_for_dpid = flows.get(
+            str(RYU_DATAPATH), []
+        )  # Make sure to use the string representation
 
-        if response.ok:
-            raw_flow_table = response.json().get(str(RYU_DATAPATH), [])
+        # Process the flow rules to extract the source and destination MAC addresses
+        communication_list = []
+        for flow in flows_for_dpid:
+            match = flow.get("match")
+            if match:
+                src_mac = match.get("dl_src")
+                dst_mac = match.get("dl_dst")
+                if src_mac and dst_mac:
+                    communication_list.append(
+                        {
+                            "source_mac": src_mac,
+                            "destination_mac": dst_mac,
+                        }
+                    )
 
-            # Convert the raw data to desired format
-            formatted_flow_table = []
+        return jsonify(communication_list), 200
 
-            for flow in raw_flow_table:
-                match_data = flow.get("match", {})
-                src_ip = match_data.get("ipv4_src")
-                dst_ip = match_data.get("ipv4_dst")
-
-                # If both source and destination IP are available, process the data
-                if src_ip and dst_ip:
-                    formatted_flow = {
-                        "match": {"ipv4_src": src_ip, "ipv4_dst": dst_ip},
-                        # Assuming all actions result in 'allow_packet' for now
-                        # You might want to add specific checks based on your actual OVS rules to set appropriate actions
-                        "actions": ["allow_packet"],
-                    }
-
-                    formatted_flow_table.append(formatted_flow)
-
-            return jsonify({"flow_table": formatted_flow_table})
-        else:
-            print(f"Failed to retrieve flow table. Status code: {response.status_code}")
-            return (
-                jsonify(
-                    {
-                        "error": f"Failed to retrieve flow table. Status code: {response.status_code}"
-                    }
-                ),
-                500,
-            )
-    except Exception as error:
-        print(f"Error while retrieving communications: {str(error)}")
-        return jsonify({"error": str(error)}), 500
+    except requests.RequestException as e:
+        print(f"Error during GET request: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 @app.route("/isolated_devices")
 def get_isolated_devices():
-    """Return the content of isolated_devices.json."""
-    try:
-        ips = load_ips_from_file(BLOCKED_IP_JSON)
-        return jsonify(ips)
-    except Exception as error:
-        print(f"Failed to retrieve devices: {str(error)}")
-        return jsonify({"error": str(error)}), 500
+    return None
 
 
 @app.route("/isolate_mac/<mac_address>", methods=["POST"])
 def isolate_mac(mac_address):
     # First GET request
     try:
-        response = requests.get("http://{SWITCH_ADDRESS}:{SWITCH_PORT}/stats/s")
+        response = requests.get("http://{}:{SWITCH_PORT}/stats/s")
         response.raise_for_status()
-        print(
-            response.json()
-        )  # Print the response for the GET request (or process it however you want)
+        print(response.json())
     except requests.RequestException as e:
         print(f"Error during GET request: {e}")
 
     # Second POST request
+    RYU_DATAPATH = get_switch_dpid()
     post_payload = {
         "dpid": RYU_DATAPATH,
         "cookie": 1,
@@ -176,27 +118,28 @@ def isolate_mac(mac_address):
 
     try:
         response = requests.post(
-            "http://192.168.1.10:8080/stats/flowentry/add", json=post_payload
+            f"http://{RYU_ADDRESS}:{RYU_PORT}/stats/flowentry/add",
+            json=post_payload,
         )
         response.raise_for_status()
-        print(
-            response.json()
-        )  # Print the response for the POST request (or process it however you want)
+        print(response.json())
+        return (
+            jsonify({"status": "success", "message": "MAC isolated successfully"}),
+            200,
+        )  # <-- Return a response here
     except requests.RequestException as e:
         print(f"Error during POST request: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 @app.route("/include_mac/<mac_address>", methods=["POST"])
 def include_mac(mac_address):
-    # First GET request
-    try:
-        response = requests.get(f"http://{SWITCH_ADDRESS}:{SWITCH_PORT}/stats/s")
-        response.raise_for_status()
-        print(response.json())  # Print the response for the GET request
-    except requests.RequestException as e:
-        print(f"Error during GET request: {e}")
+    # Define the URL and the payload for the POST request
+    url = f"http://{RYU_ADDRESS}:{RYU_PORT}/stats/flowentry/delete"
 
-    # Second POST request for deleting the flow entry
+    RYU_DATAPATH = (
+        get_switch_dpid()
+    )  # Make sure this function returns 251096700645801 or appropriate DPID
     post_payload = {
         "dpid": RYU_DATAPATH,
         "cookie": 1,
@@ -209,16 +152,38 @@ def include_mac(mac_address):
         "match": {"dl_src": mac_address},
     }
 
+    # Send the POST request
     try:
-        response = requests.post(
-            "http://192.168.1.10:8080/stats/flowentry/delete", json=post_payload
-        )  # This is where the endpoint has been corrected.
+        response = requests.post(url, json=post_payload)
         response.raise_for_status()
-        print(response.json())  # Print the response for the POST request
+
+        # Print and return the response
+        print(response.json())
         return jsonify(response.json()), 200
     except requests.RequestException as e:
         print(f"Error during POST request: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+def get_switch_dpid():
+    """Get the DPID of the switch."""
+    try:
+        url = f"http://{RYU_ADDRESS}:{RYU_PORT}/stats/switches"
+        response = requests.get(url, timeout=5)
+
+        if response.ok:
+            switches = response.json()
+            if switches:
+                return switches[0]
+            else:
+                print("No switches found.")
+                return 251096700645801  # As default
+        else:
+            print(f"Failed to retrieve switches. Status code: {response.status_code}")
+            return None
+    except Exception as error:
+        print(f"Error while retrieving DPID: {str(error)}")
+        return None
 
 
 if __name__ == "__main__":

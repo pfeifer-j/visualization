@@ -1,11 +1,21 @@
+/**
+ * network-visualization.ts - A module for visualizing network devices and communication.
+ *
+ * This module integrates d3.js to create an force-directed graph of network devices, complete
+ * with additional detailed views presented in a table format. The visualization allows for
+ * representation of device information, status, and communication flow.
+ *
+ * Main Features:
+ * 1. Dynamic visualization of network devices and links.
+ * 2. Interactive features like sdn controll.
+ * 3. Customizable appearance based on provided or default configurations.
+ * 4. Detailed table view of devices.
+ *
+ * Author: Jan Pfeifer
+ */
+
 import * as d3 from "d3";
-// Live Imports
-
 import * as network from "./network";
-
-//Example Imports
-import { getDevicesStatic } from "./network";
-import { getCommunicationsStatic } from "./network";
 
 // Initialize the d3.js visualization
 export async function generateView(htmlSource, config) {
@@ -16,28 +26,26 @@ export async function generateView(htmlSource, config) {
     const tableWidth = 350;
     const tableHeight = 500;
     const unselectedRadius = config.unselectedRadius || 10;
-    const communicatedRadius = config.communicatedRadius || 12;
+    const communicatedRadius = config.communicatedRadius || 10;
     const selectedRadius = config.selectedRadius || 15;
-    const nodeReachable = config.nodeReachable || "#3BD16F";
-    const nodeUnreachable = config.nodeUnreachable || "#F03A47";
-    const nodeHighlighted = config.nodeHighlighted || "orange";
-    const nodeIsolated = config.nodeIsolated || "darkgray";
-    const rowDefault = config.rowDefault || "transparent";
-    const rowSelected = config.rowSelected || "white";
-    const fontDefault = config.fontDefault || "white";
-    const fontSelected = config.fontSelected || "black";
-    const linkDefault = config.linkDefault || "darkgray";
-    const linkHighlighted = config.linkHighlighted || "orange";
+    const nodeReachable = config.nodeReachable || "#00ff33";
+    const nodeUnreachable = config.nodeUnreachable || "#ff0000";
+    const nodeHighlighted = config.nodeHighlighted || "#f0b056";
+    const nodeIsolated = config.nodeIsolated || "#ababab";
+    const rowDefault = config.rowDefault || "#ffffff";
+    const rowSelected = config.rowSelected || "#ffc800";
+    const fontDefault = config.fontDefault || "#474747";
+    const fontSelected = config.fontSelected || "#ffffff";
+    const linkDefault = config.linkDefault || "#949494";
+    const linkHighlighted = config.linkHighlighted || "#ffbb00";
     const linkWidthDefault = config.linkWidthDefault || 1;
-    const linkWidthHighlighted = config.linkWidthHighlighted || 5;
+    const linkWidthHighlighted = config.linkWidthHighlighted || 3;
     const openWrtIP = config.openWrtIP || "192.168.1.1";
-    const openWrtColor = config.openWrtColor || "lightblue";
+    const hassIP = config.hassIP || "192.168.1.20";
+    const openWrtColor = config.openWrtColor || "#627dea";
     const graphForce = config.graphForce || -300;
     const duration = config.duration || 200;
     const mode = config.mode || "physical";
-
-    //ToDo: Implement multiple shapes
-    const shape = "circle"; //config.shape || "circle";
 
     // Get the network data
     let data = {
@@ -45,16 +53,30 @@ export async function generateView(htmlSource, config) {
         links: [],
     };
 
-    // Select the correct devices to be displayed
-    let devices = await (!config.isDemo ? network.getDevices() : (config.mode == "software" ? network.getDevicesSDN() : getDevicesStatic()));
+    // Select the correct devices to be displayed. Used for the demo network
+    let devices;
+
+    if (!config.isDemo) {
+        devices = await network.getDevices(openWrtIP);
+    } else {
+        devices = config.mode === "software"
+            ? await network.getDemoSdn()
+            : await network.getSmallNetwork();
+    }
 
     try {
         devices.forEach((device) => {
-            let hostname = device.hostname;
+            let hostname = (device.hostname && device.hostname.trim().length > 0) ? device.hostname : "N/A";
             let ip = device.ip;
             let mac = device.mac;
             let reachable = device.reachable;
             let host = device.host;
+
+            // Since there is a bug in the LuCi.rpc, the existence of the mac is enough to check if the device is reachable.
+            // The next line can be removed when this bug in the api software is fixed.
+            if (!config.isDemo) {
+                reachable = device.mac != null;
+            }
 
             data.nodes.push({
                 host: host,
@@ -70,7 +92,7 @@ export async function generateView(htmlSource, config) {
         console.error('Error generating the devicelist:', error);
     }
 
-    // Generate graph
+    // Generate the graph
     let graphSelector = "#graphSvg";
     let graphElement = htmlSource.renderRoot.querySelector(graphSelector);
     let graphSvg = d3
@@ -98,9 +120,8 @@ export async function generateView(htmlSource, config) {
         .attr("fill", "transparent")
         .on("click", clearSelection);
 
-    // Read isolated devices
+    // Get the already isolated devices
     let isolatedDevices = await network.getIsolatedDevices();
-
 
     // Fill graph with data
     let links = graphSvg
@@ -121,8 +142,7 @@ export async function generateView(htmlSource, config) {
         .enter()
         .append("circle")
         .attr("r", unselectedRadius)
-        .attr("fill", (node) => isolatedDevices.includes(node.ip) ? nodeIsolated : (node.reachable ? nodeReachable : nodeUnreachable)
-        )
+        .attr("fill", (node) => isolatedDevices.includes(node.mac) ? nodeIsolated : (node.reachable ? nodeReachable : nodeUnreachable))
         .attr("name", (node) => node.name)
         .attr("ip", (node) => node.ip)
         .attr("mac", (node) => node.mac)
@@ -157,7 +177,6 @@ export async function generateView(htmlSource, config) {
 
     nodes.call(drag);
 
-    let renderedOnce = false;
     function ticked() {
         nodes.attr("cx", function (d) {
             return d.x;
@@ -174,12 +193,6 @@ export async function generateView(htmlSource, config) {
         }).attr("y2", function (d) {
             return d.target.y;
         });
-
-        // If it's the first time the graph has rendered, log the time.
-        if (!renderedOnce) {
-            console.log(`Graph rendered at: $${new Date().getSeconds().toString()} and ${new Date().getMilliseconds().toString()}`);
-            renderedOnce = true;
-        }
     }
 
     function dragstarted(event, d) {
@@ -199,30 +212,7 @@ export async function generateView(htmlSource, config) {
         d.fy = null;
     }
 
-    // invalidation.then(() => simulation.stop());
-    // return Object.assign(graphSvg.node(), {
-    //     update(newData) {
-    //         const old = new Map(node.data().map(d => [d.ip, d]));
-    //         data.nodes = newData.nodes.map(d => Object.assign(old.get(d.ip) || {}, d));
-    //         data.links = newData.links.map(d => Object.assign({}, d));
-
-    //         simulation.nodes(data.nodes);
-    //         simulation.force("link").links(data.links);
-    //         simulation.alpha(1).restart();
-
-    //         node = node
-    //             .data(data.nodes, d => d.ip)
-    //             .join(enter => enter.append("circle")
-    //                 .attr("r", 8)
-    //                 .attr("fill", d => color(d.ip)));  // Replace color(d.ip) with your desired color function
-
-    //         link = link
-    //             .data(data.links, d => `${d.source.ip}\t${d.target.ip}`)
-    //             .join("line");
-    //     }
-    // });
-
-    // Generate table
+    // Generate the table
     let tableSelector = "#tableSvg";
     let tableElement = htmlSource.renderRoot.querySelector(tableSelector);
     let tableSvg = d3
@@ -309,12 +299,7 @@ export async function generateView(htmlSource, config) {
         .on("mouseout", handleMouseOut)
         .on("click", handleClick);
 
-
-    // Update the graph within a set interval
-    // setInterval(() => {
-    //     updateGraph();
-    // }, config.renderInterval || 15000);
-
+    // Select node by ip and add hover effect
     function handleMouseOver(event, element) {
         let selectedIP = getIP(element);
 
@@ -381,6 +366,8 @@ export async function generateView(htmlSource, config) {
 
     function handleClick(event, element) {
         let selectedIP = getIP(element);
+        let selectedMac = getMac(element);
+
 
         // Get the node
         let selectedNode = graphSvg
@@ -416,7 +403,7 @@ export async function generateView(htmlSource, config) {
                 .style("color", fontSelected)
                 .attr("selected", "true");
 
-            showCommunication(selectedIP);
+            showCommunication(selectedMac);
         }
     }
 
@@ -430,18 +417,19 @@ export async function generateView(htmlSource, config) {
                     .filter(function (d) {
                         let selected = this.getAttribute("selected") === "true";
                         if (selected) {
+
+                            // Isolate by IP and Mac address
                             let selectedIP = this.getAttribute("ip");
                             let selectedMac = this.getAttribute("mac");
 
-                            // Error handling for isolation OpenWRT
-                            if (selectedIP === openWrtIP) {
-                                window.confirm("You can't isolate the source node!");
+                            // Error handling for isolation OpenWRT and Home Assistant
+                            if (selectedIP === openWrtIP || selectedIP === hassIP) {
+                                window.confirm("You can't isolate the source node or Home Assistant!");
                             }
 
                             // Confirm dialog for isolation
-                            let confirmDelete = window.confirm(`Are you sure you want to isolate IP: ${selectedIP} and MAC: ${selectedMac}?`);
-                            if (confirmDelete) {
-                                // network.isolateDeviceByIp(selectedIP);
+                            let confirmIsolation = window.confirm(`Are you sure you want to isolate MAC address: ${selectedMac}?`);
+                            if (confirmIsolation) {
                                 network.isolateDeviceByMac(selectedMac);
                             }
                         }
@@ -459,11 +447,11 @@ export async function generateView(htmlSource, config) {
                         let selected = this.getAttribute("selected") === "true";
                         if (selected) {
                             let selectedIP = this.getAttribute("ip");
-                            let selectedMac = this.getAttribute("mac"); // Assuming the MAC attribute is named 'mac'
+                            let selectedMac = this.getAttribute("mac");
+
                             // Confirm dialog for including devices
-                            let confirmInclude = window.confirm(`Are you sure you want to include IP: ${selectedIP} and MAC: ${selectedMac}?`);
-                            if (confirmInclude) {
-                                // network.includeDeviceByIp(selectedIP);
+                            let confirmInclusion = window.confirm(`Are you sure you want to include MAC address: ${selectedMac}?`);
+                            if (confirmInclusion) {
                                 network.includeDeviceByMac(selectedMac);
                             }
                         }
@@ -479,6 +467,7 @@ export async function generateView(htmlSource, config) {
     }
 
     function clearSelection() {
+
         // Clear nodes
         graphSvg
             .selectAll("circle")
@@ -527,60 +516,35 @@ export async function generateView(htmlSource, config) {
     }
 
     // Renders the network flow between devices
-    async function showCommunication(selectedIP) {
-        let communications = config.isDemo ? await getCommunicationsStatic() : await network.getCommunications();
-
-        console.log(communications);
-
-        let linkedIPs = [];
-
+    async function showCommunication(selectedMac) {
         try {
-            // Get the connected IP's
-            communications.forEach(function (communication) {
-                console.log(communication);
-                if (communication.src === selectedIP) {
-                    linkedIPs.push(communication.dst);
-                } else if (communication.dst === selectedIP) {
-                    linkedIPs.push(communication.src);
-                }
-            });
+            let communications = config.isDemo ? await network.getDemoCommunications() : await network.getCommunications();
+            let linkedIdentifiers = [];
 
-            console.log(linkedIPs);
+            // Get the connected MAC's
+            for (let communication of communications) {
+
+                if (communication.sourceMac.toUpperCase() === selectedMac) {
+                    linkedIdentifiers.push(communication.destinationMac);
+                } else if (communication.destinationMac.toUpperCase() === selectedMac) {
+                    linkedIdentifiers.push(communication.sourceMac);
+                }
+            }
+
+            // Highlight nodes
+            graphSvg
+                .selectAll("circle")
+                .filter(function () {
+                    return linkedIdentifiers.includes(this.getAttribute("mac").toLowerCase());
+                })
+                .transition()
+                .duration(duration)
+                .attr("r", communicatedRadius)
+                .attr("fill", nodeHighlighted);
 
         } catch (error) {
             console.error('Error generating the connections:', error);
         }
-
-        // Highlight nodes
-        graphSvg
-            .selectAll("circle")
-            .filter(function () {
-                return linkedIPs.includes(this.getAttribute("ip"));
-            })
-            .transition()
-            .duration(duration)
-            .attr("r", communicatedRadius)
-            .attr("fill", nodeHighlighted);
-
-        // Highlight links
-        // graphSvg
-        //     .selectAll("line")
-        //     .filter(function (line) {
-        //         let sourceIP = line.source.ip;
-        //         let targetIP = line.target.ip;
-
-        //         // Check if the link is part of the shortest path
-        //         let isPartOfShortestPath = linkedIPs.includes(sourceIP) && linkedIPs.includes(targetIP);
-
-        //         // Check if the link is the selected IP or connected to it
-        //         let isConnectedToSelectedIP = sourceIP === selectedIP || targetIP === selectedIP;
-
-        //         return isPartOfShortestPath || isConnectedToSelectedIP;
-        //     })
-        //     .transition()
-        //     .duration(duration)
-        //     .style("stroke", linkHighlighted)
-        //     .attr("stroke-width", linkWidthHighlighted)
     }
 
     // Returns the IP of a node or a row
@@ -596,122 +560,23 @@ export async function generateView(htmlSource, config) {
         }
     }
 
+
+    // Returns the IP of a node or a row
+    function getMac(element) {
+        if (element.mac) {
+            return element.mac;
+        }
+        else if (element[2]) {
+            return element[2];
+        }
+        else {
+            return undefined;
+        }
+    }
+
     // Remove existing visualisations if the design is changed within the Home Assistant Editor
     function clearExistingVisualization(svgElement, elementSelector) {
         const svg = d3.select(svgElement);
         svg.selectAll(elementSelector).remove();
-    }
-
-    // Update the graph after a set interval
-    async function updateGraph() {
-        // Only update if the devices have changed.
-        const newDevices = config.isDemo ? await getDevicesStatic() : await network.getDevices();
-        if (JSON.stringify(devices) === JSON.stringify(newDevices)) {
-            return;
-        }
-
-        // Save the current selections and positions.
-        let selections = new Map();
-        let positions = new Map();
-        nodes.each(function (d) {
-            selections.set(d.ip, this.getAttribute("selected"));
-            positions.set(d.ip, { x: d.x, y: d.y });
-        });
-
-        // Update the device information
-        devices = newDevices;
-        data.nodes = devices.map(device => {
-            let hostname = device.hostname;
-            let ip = device.ip;
-            let mac = device.mac;
-            let reachable = device.reachable;
-            let host = device.host;
-
-            return {
-                host: host,
-                name: hostname,
-                ip: ip,
-                mac: mac,
-                reachable: reachable,
-            }
-        });
-
-        // Re-calculate the links based on the new devices array
-        data.links = devices.map(device => {
-            return { source: device.host, target: device.ip, marked: false };
-        });
-
-        // Rebind the new data
-        nodes = nodes.selectAll("circle").data(data.nodes, d => d.ip);
-        links = links.selectAll("line").data(data.links, d => d.source.ip + "-" + d.target.ip);
-
-        // Remove old nodes
-        nodes.exit().remove();
-        links.exit().remove();
-
-        // Update existing nodes
-        nodes
-            .attr("fill", (node) => isolatedDevices.includes(node.ip) ? nodeIsolated : (node.reachable ? nodeReachable : nodeUnreachable));
-
-        // Create new nodes
-        const newNodes = nodes.enter().append("circle");
-        newNodes.attr("r", unselectedRadius)
-        nodes.attr("fill", (node) => {
-            // Retrieve the selected attribute
-            let isSelected = d3.select(`circle[ip='${node.ip}']`).attr("selected") === "true";
-
-            // Return color based on conditions
-            return isSelected ? nodeHighlighted
-                : (isolatedDevices.includes(node.ip) ? nodeIsolated
-                    : (node.reachable ? nodeReachable
-                        : nodeUnreachable))
-        })
-            .attr("name", (node) => node.name)
-            .attr("ip", (node) => node.ip)
-            .attr("mac", (node) => node.mac)
-            .attr("host", (node) => node.host)
-            .attr("reachable", (node) => node.reachable)
-            .attr("selected", (node) => selections.get(node.ip) || false)
-            .attr("isolated", (node) => isolatedDevices.includes(node.ip))
-            .attr("cx", (node) => positions.has(node.ip) ? positions.get(node.ip).x : graphWidth / 2)
-            .attr("cy", (node) => positions.has(node.ip) ? positions.get(node.ip).y : graphHeight / 2)
-            .on("mouseover", handleMouseOver)
-            .on("mouseout", handleMouseOut)
-            .on("click", handleClick);
-
-        // Mark source node
-        graphSvg
-            .select("circle[ip='" + openWrtIP + "']")
-            .attr("fill", openWrtColor);
-
-        // Merge the new nodes with the existing nodes
-        nodes = newNodes.merge(nodes);
-
-        // Create new links
-        let newLinks = links.enter().append("line");
-
-        newLinks.attr("source", (link) => link.source)
-            .attr("target", (link) => link.target)
-            .style("stroke", linkDefault)
-            .attr("stroke-width", linkWidthDefault)
-            .attr("marked", "false");
-
-        // Merge the new links with the existing links
-        links = newLinks.merge(links);
-
-        // Restart the simulation with the new data
-        simulation.nodes(data.nodes.concat(newNodes.data()));
-        simulation.force("link").links(data.links);
-        simulation.alpha(1).restart();
-        simulation.alpha(1);
-        for (var i = 0; i < 120; ++i) simulation.tick();
-
-        nodes.attr("cx", function (d) { return d.x; })
-            .attr("cy", function (d) { return d.y; });
-
-        links.attr("x1", function (d) { return d.source.x; })
-            .attr("y1", function (d) { return d.source.y; })
-            .attr("x2", function (d) { return d.target.x; })
-            .attr("y2", function (d) { return d.target.y; });
     }
 }

@@ -1,3 +1,14 @@
+/**
+ * styles.ts - Styling module for the Network Visualization card in Home Assistant.
+ *
+ * Purpose:
+ * Provides CSS styles tailored for the Network Visualization card's visual appearance and layout.
+ * This module defines the aesthetic and spatial attributes of elements, ensuring clarity,
+ * responsiveness, and a user-friendly interface in the Home Assistant environment.
+ *
+ * Author: Jan Pfeifer
+ */
+
 import { css } from "lit";
 
 export const styles = css`

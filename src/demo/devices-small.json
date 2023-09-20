@@ -308,7 +308,7 @@
   {
     "dev": "br0",
     "stale": true,
-    "mac": "12:34:56:78:10:12",
+    "mac": "13:3d:56:ab:ea:cd",
     "noarp": false,
     "permanent": false,
     "failed": false,
@@ -326,7 +326,7 @@
   {
     "dev": "br0",
     "stale": true,
-    "mac": "12:34:56:78:10:12",
+    "mac": "a3:b3:f2:87:10:43",
     "noarp": false,
     "permanent": false,
     "failed": false,
@@ -362,7 +362,7 @@
   {
     "dev": "br0",
     "stale": true,
-    "mac": "12:34:56:78:10:12",
+    "mac": "14:24:e9:a8:1a:c2",
     "noarp": false,
     "permanent": false,
     "failed": false,
@@ -380,7 +380,7 @@
   {
     "dev": "br0",
     "stale": true,
-    "mac": "12:34:56:78:10:12",
+    "mac": "a2:3e:f6:d8:c0:b2",
     "noarp": false,
     "permanent": false,
     "failed": false,
