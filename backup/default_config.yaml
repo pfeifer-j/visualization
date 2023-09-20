@@ -1,0 +1,24 @@
+type: custom:network-visualization
+header: 'My Network:'
+renderInterval: 60000
+graphForce: -300
+duration: 200
+openWrtIP: 192.168.1.1
+isDemo: false
+mode: physical
+unselectedRadius: 10
+communicatedRadius: 10
+selectedRadius: 15
+linkWidthDefault: 1
+linkWidthHighlighted: 3
+openWrtColor: '#0033ff'
+nodeReachable: '#00ff33'
+nodeUnreachable: '#ff0000'
+nodeHighlighted: '#f0b056'
+nodeIsolated: '#ababab'
+rowDefault: '#ffffff'
+rowSelected: '#ffc800'
+fontSelected: '#ffffff'
+linkDefault: '#949494'
+linkHighlighted: '#ffbb00'
+fontDefault: '#474747'
