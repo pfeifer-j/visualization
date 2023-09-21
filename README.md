@@ -1,14 +1,14 @@
-# Network Visualization for Smart Homes
+# Exploring Visualization Techniques for Wi-Fi Networks in Smart Homes
 
 The increasing adoption of smart home devices, driven by the Internet of Things (IoT), has revolutionized home technology. This project introduces a straightforward Wi-Fi network visualization approach integrated within the Home Assistant platform, presenting both hardware-based and software-defined network structures of a smart home in a user-friendly format.
 
 **Abstract**:  
-The modern smart home, laden with IoT devices, has transformed the landscape of home technology, promising improved convenience. Yet, it's not devoid of complexities, especially in network visualization. Many existing tools are intricate or pricey, emphasizing the need for simpler, more accessible solutions. This project fulfills this gap by presenting a force-directed graph on the Home Assistant platform that offers an insight into both hardware and software-defined structures of the smart home network. Furthermore, it provides real-time data, user customization, and a level of network control, allowing users to interact with and manage their devices visually. An evaluation proved its user-friendliness, efficiency, and adaptability. Notably, it facilitates easy identification of crucial security metrics, such as unseen devices or possible security lapses, empowering users to bolster their smart home's security. Designed with user-friendliness and adaptability at its core, this tool is truly transformative for SDN visualization and control in smart homes.
+The increasing adoption of smart home devices, fueled by the Internet of Things (IoT), has transformed home technology. While this offers benefits such as improved convenience, it also reveals complexities, especially in the field of network visualization. Current visualization tools are often either too intricate or too expensive for most users, highlighting the need for simpler, user-focused solutions. This research introduces a straightforward Wi-Fi network visualization approach for smart homes. Within the Home Assistant platform, the system showcases a force-directed graph that represents both the hardware-based and software- defined network structures of the smart home. Accompanying this visualization is a table detailing key device attributes, such as name, MAC, and IP address. Updated at user- defined intervals, this visualization provides real-time insights, with an emphasis on user customization and ease of use. Implementing this visualization within a Software-Defined Network (SDN) allows not just for visualizing the network flow but also limited network control, letting users manage their devices through interactive visuals. An evaluation reviewed the visualization tool considering user-friendliness, efficiency, and adaptability. This tool offers the possibility to easily identify critical security indicators, such as hidden devices or potential security breaches, enabling users to fortify their smart home defenses. Emphasizing user-friendliness and customizability, it appeals to a broad user base. In essence, this research presents a transformative approach to SDN visualization and control in smart homes.
 
 **Project Context**:
 This visualization tool was developed during a bachelor's thesis in computer science. For an in-depth understanding, details, and methodology, please refer to the thesis located as a PDF in this repository.
 
-## Installation
+## Installation - Quick Guide
 
 1. **Prerequisites**:
    - A Raspberry Pi 4 Model B or equivalent.
