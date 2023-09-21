@@ -1,47 +1,53 @@
-**Network Visualization for Smart Homes** 
+# Network Visualization for Smart Homes
 
-This project provides a comprehensive tool for visualizing and managing network activity within a smart home. Integrating devices, from light bulbs to routers, this system offers both a bird's eye view of network activity and the granular control needed for network administrators.
+The increasing adoption of smart home devices, driven by the Internet of Things (IoT), has revolutionized home technology. This project introduces a straightforward Wi-Fi network visualization approach integrated within the Home Assistant platform, presenting both hardware-based and software-defined network structures of a smart home in a user-friendly format.
 
-This tool was created during the writing of the bachelors thesis in computer science. The thesis can be found as a pdf in the repository.
+**Abstract**:  
+The modern smart home, laden with IoT devices, has transformed the landscape of home technology, promising improved convenience. Yet, it's not devoid of complexities, especially in network visualization. Many existing tools are intricate or pricey, emphasizing the need for simpler, more accessible solutions. This project fulfills this gap by presenting a force-directed graph on the Home Assistant platform that offers an insight into both hardware and software-defined structures of the smart home network. Furthermore, it provides real-time data, user customization, and a level of network control, allowing users to interact with and manage their devices visually. An evaluation proved its user-friendliness, efficiency, and adaptability. Notably, it facilitates easy identification of crucial security metrics, such as unseen devices or possible security lapses, empowering users to bolster their smart home's security. Designed with user-friendliness and adaptability at its core, this tool is truly transformative for SDN visualization and control in smart homes.
+
+**Project Context**:
+This visualization tool was developed during a bachelor's thesis in computer science. For an in-depth understanding, details, and methodology, please refer to the thesis located as a PDF in this repository.
 
 ## Installation
 
 1. **Prerequisites**:
-   - Ensure you have a Raspberry Pi 4 Model B, or an equivalent system, set up and ready to go.
-   - A selection of IoT devices.
-   - Familiarize yourself with Home Assistant, OpenWRT, and Open vSwitch (OVS) platforms.
+   - A Raspberry Pi 4 Model B or equivalent.
+   - Various IoT devices.
+   - A very basic understanding of Home Assistant, OpenWRT, and Open vSwitch (OVS) platforms. Explanations can be found in the thesis.
    
-2. **Setup Hardware**:
-   - Follow a physical layout depicted in the architecture section of the thesis.
-   - Connect the IoT devices to the WiFi.
+2. **Hardware Configuration**:
+   - Consult the architecture section of the thesis for the preferred physical layout.
+   - Connect the IoT devices to the WiFi network.
 
-3. **Setup Software**:
-   - Install the specified versions of the software as outlined in the table. Particularly, ensure you have Home Assistant, OpenWRT, OVS, and Ryu.
-   - Use the provided configuration files and scripts from the project repository to set up and configure the software on the respective devices.
-
-4. **Post Installation**:
-   - Once all software is set up, ensure your network is up and running. Test with some basic network commands or tools to validate the setup.
+3. **Software Configuration**:
+   - Adhere to the software versions mentioned in the thesis. Ensure the installation of Home Assistant, OpenWRT, OVS, and Ryu.
+   - Utilize configuration files and backups available in this repository for setup and configuration.
 
 ## Usage
 
-1. **Launching the Project**:
-   - Access the Home Assistant interface via the designated IP address (typically http://localhost:8124 for local installations).
-   - Navigate through the interface to locate the network visualization tool.
+1. **Accessing the Tool**:
+   - Launch Home Assistant via the preferred way.
+   - Add to the network visualization tool. 
 
 2. **Interacting with the Visualization**:
-   - Devices will be represented as nodes on the visualization graph.
-   - Click on a node to view details, such as its IP and MAC addresses.
-   - Use the editor to customize the visualization to your liking.
+   - Devices are symbolized as nodes on the graph.
+   - Select a node to view its details, such as IP and MAC addresses.
+   - Employ the editor for a personalized visualization experience.
 
-3. **Managing Network Traffic**:
-   - Using the tool, you can isolate devices, view communication endpoints, and even initiate certain network flow controls. Detailed guidance is provided in the tool's help section.
+3. **Network Traffic Management**:
+   - View communication partners and isolate devices.
 
 ## Features
 
-1. **Network and Communication Flow Visualization**: View the entire network layout with nodes representing each device. Track communication flows and see which devices are communicating with each other.
+1. **Network Visualization**: Understand your network's layout with nodes representing each device. Monitor communication routes and interactions.
 
-2. **Automatic Updates**: Set your preferred update interval. The visualization will refresh periodically to show real-time network activity.
+2. **Timely Updates**: Define your update frequency. Experience real-time network activity as the visualization auto-refreshes.
 
-3. **Network Flow Control**: Isolate devices with a single click, ensuring they can only communicate with the router.
+3. **Network Control**: Effortlessly isolate devices to ensure they communicate solely with the router.
 
-4. **Customization**: Adjust various visualization parameters, such as node color, link thickness, and more, to make the graph tailored to your preferences.
+4. **Customizability**: Modify various visual elements, such as node color and link thickness, for a personalized visualization.
+
+---
+
+For questions, feedback, or support, please refer to the GitHub issues or contact me directly.
+

@@ -1,6 +1,6 @@
 # Installation Guide for Network Visualization in Smart Homes
 
-Follow this step-by-step guide to set up the network visualization tool for smart homes.
+Follow this step-by-step guide to set up the network visualization tool for smart homes. The commands used can be found in the thesis.
 
 ## 1. OpenWRT Installation
 
