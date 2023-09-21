@@ -25500,9 +25500,10 @@ async function generateView(htmlSource, config) {
     graphSvg.append("rect").attr("width", graphWidth).attr("height", graphHeight).attr("fill", "transparent").on("click", clearSelection);
     // Get the already isolated devices
     let isolatedDevices = await _network.getIsolatedDevices();
+    console.log(isolatedDevices);
     // Fill graph with data
     let links = graphSvg.append("g").selectAll("line").data(data.links).enter().append("line").attr("source", (link)=>link.source).attr("target", (link)=>link.target).style("stroke", linkDefault).attr("stroke-width", linkWidthDefault).attr("marked", "false");
-    let nodes = graphSvg.append("g").selectAll("circle").data(data.nodes).enter().append("circle").attr("r", unselectedRadius).attr("fill", (node)=>isolatedDevices.includes(node.mac) ? nodeIsolated : node.reachable ? nodeReachable : nodeUnreachable).attr("name", (node)=>node.name).attr("ip", (node)=>node.ip).attr("mac", (node)=>node.mac).attr("host", (node)=>node.host).attr("reachable", (node)=>node.reachable).attr("selected", false).attr("isolated", (node)=>isolatedDevices.includes(node.ip));
+    let nodes = graphSvg.append("g").selectAll("circle").data(data.nodes).enter().append("circle").attr("r", unselectedRadius).attr("fill", (node)=>isolatedDevices.includes(node.mac.toLowerCase()) ? nodeIsolated : node.reachable ? nodeReachable : nodeUnreachable).attr("name", (node)=>node.name).attr("ip", (node)=>node.ip).attr("mac", (node)=>node.mac).attr("host", (node)=>node.host).attr("reachable", (node)=>node.reachable).attr("selected", false).attr("isolated", (node)=>isolatedDevices.includes(node.mac.toLowerCase()));
     // Mark source node
     graphSvg.select("circle[ip='" + openWrtIP + "']").attr("fill", openWrtColor);
     // Add physics to the graph
@@ -25820,18 +25821,16 @@ function getCommunications() {
     });
 }
 function getIsolatedDevices() {
-    return [];
-/*return fetch(homeAssistant + '/isolated_devices')
-        .then(response => response.json())
-        .then(deviceList => {
-            let isolatedDeviceList = deviceList.map(device => device.ip);
-            return isolatedDeviceList;
-        })
-        .catch(error => {
-            // Handle any errors that occur during the request
-            console.error('Error:', error);
-            return [];
-        });*/ }
+    return fetch(homeAssistant + "/isolated_devices").then((response)=>{
+        if (!response.ok) throw new Error("Network response was not ok");
+        return response.json();
+    }).then((deviceList)=>{
+        return deviceList;
+    }).catch((error)=>{
+        console.error("Error:", error);
+        return [];
+    });
+}
 function isolateDeviceByMac(selectedMac) {
     return fetch(homeAssistant + "/isolate_mac/" + selectedMac, {
         method: "POST"
@@ -25841,7 +25840,6 @@ function isolateDeviceByMac(selectedMac) {
     });
 }
 function includeDeviceByMac(selectedMac) {
-    console.log(selectedMac + " is no longer isolated.");
     return fetch(homeAssistant + "/include_mac/" + selectedMac, {
         method: "POST"
     }).then((response)=>response.json()).catch((error)=>{

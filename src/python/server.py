@@ -1,5 +1,13 @@
 """
-This script is used to communicate with the LUCI API and the OVS both located on the OpenWRT.
+server.py - API Server to communicate with LUCI API and the OVS, both hosted on the OpenWRT router.
+
+This script allows for interactions such as:
+- Retrieving all connected devices
+- Fetching communication details
+- Checking isolated devices
+- Isolating and including specific MAC addresses
+
+Author: Jan Pfeifer
 """
 
 from flask import Flask, jsonify
@@ -32,7 +40,10 @@ SWITCH_PORT = secrets["switch_port"]
 
 @app.route("/devices")
 def get_devices():
-    """Retrieves a list of all connected devices."""
+    """
+    Retrieve a list of all devices currently connected to the router.
+    This is a code segment provided by the LuCi.rpc.
+    """
     try:
         router = OpenWrtRpc(ROUTER_IP, ROUTER_USER, ROUTER_PASSWORD)
         result = router.get_all_connected_devices(only_reachable=False)
@@ -46,7 +57,9 @@ def get_devices():
 
 @app.route("/communications", methods=["GET"])
 def get_communications():
-    # Use the Ryu REST API to get the flow rules for the specific DPID
+    """
+    Fetch communication details between connected devices.
+    """
     RYU_DATAPATH = get_switch_dpid()
 
     if not RYU_DATAPATH:
@@ -88,20 +101,52 @@ def get_communications():
 
 @app.route("/isolated_devices")
 def get_isolated_devices():
-    return None
+    """
+    Return all isolated devices.
+    """
+    RYU_DATAPATH = get_switch_dpid()
+
+    if not RYU_DATAPATH:
+        print("No DPID found.")
+        return jsonify({"status": "error", "message": "No DPID found."}), 500
+
+    try:
+        response = requests.get(
+            f"http://{RYU_ADDRESS}:{RYU_PORT}/stats/flow/{RYU_DATAPATH}"
+        )
+        response.raise_for_status()
+        flows = response.json()
+
+        flows_for_dpid = flows.get(
+            str(RYU_DATAPATH), []
+        )  # Make sure to use the string representation
+
+        # Process the flow rules to extract the source MAC addresses of isolated devices
+        isolated_mac_addresses = []
+        for flow in flows_for_dpid:
+            actions = flow.get("actions", [])
+            match = flow.get("match", {})
+
+            # If the actions list is empty and dl_src is present, consider it as an isolated device
+            if not actions and "dl_src" in match:
+                isolated_mac_addresses.append(match["dl_src"])
+
+        print(jsonify(isolated_mac_addresses))
+        return jsonify(isolated_mac_addresses), 200
+
+    except requests.RequestException as e:
+        print(f"Error during GET request: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 @app.route("/isolate_mac/<mac_address>", methods=["POST"])
 def isolate_mac(mac_address):
-    # First GET request
-    try:
-        response = requests.get("http://{}:{SWITCH_PORT}/stats/s")
-        response.raise_for_status()
-        print(response.json())
-    except requests.RequestException as e:
-        print(f"Error during GET request: {e}")
+    """
+    Isolate a device by specifying its MAC address.
 
-    # Second POST request
+    The function achieves isolation by adding a flow rule to OVS with no actions effectively dropping packets.
+    """
+
     RYU_DATAPATH = get_switch_dpid()
     post_payload = {
         "dpid": RYU_DATAPATH,
@@ -122,7 +167,17 @@ def isolate_mac(mac_address):
             json=post_payload,
         )
         response.raise_for_status()
-        print(response.json())
+
+        # Check if the response content is valid JSON or not
+        if response.text:  # if there is some response text
+            try:
+                json_content = response.json()
+                print(json_content)
+            except json.JSONDecodeError:
+                print("Received non-JSON response:", response.text)
+        else:
+            print("Received empty response from server")
+
         return (
             jsonify({"status": "success", "message": "MAC isolated successfully"}),
             200,
@@ -134,12 +189,15 @@ def isolate_mac(mac_address):
 
 @app.route("/include_mac/<mac_address>", methods=["POST"])
 def include_mac(mac_address):
-    # Define the URL and the payload for the POST request
+    """
+    Remove isolation from a device.
+
+    This function deletes the flow rule associated with the specified MAC address, enabling its communications again.
+    """
+
     url = f"http://{RYU_ADDRESS}:{RYU_PORT}/stats/flowentry/delete"
 
-    RYU_DATAPATH = (
-        get_switch_dpid()
-    )  # Make sure this function returns 251096700645801 or appropriate DPID
+    RYU_DATAPATH = get_switch_dpid()
     post_payload = {
         "dpid": RYU_DATAPATH,
         "cookie": 1,
@@ -157,16 +215,39 @@ def include_mac(mac_address):
         response = requests.post(url, json=post_payload)
         response.raise_for_status()
 
-        # Print and return the response
-        print(response.json())
-        return jsonify(response.json()), 200
+        # Check if the response content is valid JSON or not
+        if response.text:  # if there's some response content
+            try:
+                json_content = response.json()
+                print(json_content)
+                return jsonify(json_content), 200
+            except json.JSONDecodeError:
+                print("Received non-JSON response:", response.text)
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": "Received non-JSON response from server",
+                        }
+                    ),
+                    500,
+                )
+        else:
+            print("Received empty response from server")
+            return (
+                jsonify({"status": "success", "message": "MAC included successfully"}),
+                200,
+            )
+
     except requests.RequestException as e:
         print(f"Error during POST request: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
 def get_switch_dpid():
-    """Get the DPID of the switch."""
+    """
+    Retrieve the Data Path Identifier from the Ryu controller.
+    """
     try:
         url = f"http://{RYU_ADDRESS}:{RYU_PORT}/stats/switches"
         response = requests.get(url, timeout=5)

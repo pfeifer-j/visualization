@@ -122,6 +122,7 @@ export async function generateView(htmlSource, config) {
 
     // Get the already isolated devices
     let isolatedDevices = await network.getIsolatedDevices();
+    console.log(isolatedDevices);
 
     // Fill graph with data
     let links = graphSvg
@@ -142,14 +143,14 @@ export async function generateView(htmlSource, config) {
         .enter()
         .append("circle")
         .attr("r", unselectedRadius)
-        .attr("fill", (node) => isolatedDevices.includes(node.mac) ? nodeIsolated : (node.reachable ? nodeReachable : nodeUnreachable))
+        .attr("fill", (node) => isolatedDevices.includes(node.mac.toLowerCase()) ? nodeIsolated : (node.reachable ? nodeReachable : nodeUnreachable))
         .attr("name", (node) => node.name)
         .attr("ip", (node) => node.ip)
         .attr("mac", (node) => node.mac)
         .attr("host", (node) => node.host)
         .attr("reachable", (node) => node.reachable)
         .attr("selected", false)
-        .attr("isolated", (node) => isolatedDevices.includes(node.ip));
+        .attr("isolated", (node) => isolatedDevices.includes(node.mac.toLowerCase()));
 
     // Mark source node
     graphSvg

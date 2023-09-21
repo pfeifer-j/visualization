@@ -87,18 +87,20 @@ export function getCommunications() {
 
 // Retrieve isolated devices from the Open vSwitch
 export function getIsolatedDevices() {
-    return [];
-    /*return fetch(homeAssistant + '/isolated_devices')
-        .then(response => response.json())
+    return fetch(homeAssistant + '/isolated_devices')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
         .then(deviceList => {
-            let isolatedDeviceList = deviceList.map(device => device.ip);
-            return isolatedDeviceList;
+            return deviceList;
         })
         .catch(error => {
-            // Handle any errors that occur during the request
             console.error('Error:', error);
             return [];
-        });*/
+        });
 }
 
 // Isolate the device with the given MAC address
@@ -115,8 +117,6 @@ export function isolateDeviceByMac(selectedMac) {
 
 // Include the device with the given MAC address
 export function includeDeviceByMac(selectedMac) {
-    console.log(selectedMac + " is no longer isolated.");
-
     return fetch(homeAssistant + '/include_mac/' + selectedMac, {
         method: 'POST'
     })
