@@ -60,6 +60,85 @@ export function getDevices(openWrtIP) {
         });
 }
 
+// Retrieve devices from the OpenWRT router
+export function getDevicesPhysical(openWrtIP) {
+    let processedDeviceList = [];
+
+    return fetch(homeAssistant + '/devices')
+        .then(response => response.json())
+
+        // Push the source node and add other devices to the list
+        .then(deviceList => {
+            let sourceNode = {
+                hostname: "OpenWrt",
+                ip: openWrtIP,
+                mac: "--:--:--:--:--:--",
+                reachable: "true",
+                host: "192.168.1.1"
+            };
+            processedDeviceList.push(sourceNode)
+            for (let device of deviceList) {
+                let deviceEntry = {
+                    hostname: device.hostname,
+                    ip: device.ip,
+                    mac: device.mac,
+                    reachable: device.reachable,
+                    host: device.host
+                };
+                processedDeviceList.push(deviceEntry);
+            }
+            return processedDeviceList;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            return processedDeviceList;
+        });
+}
+
+// Retrieve devices from the OpenWRT router
+export function getDevicesSdn(openWrtIP) {
+    let processedDeviceList = [];
+
+    return fetch(homeAssistant + '/devices')
+        .then(response => response.json())
+
+        // Push the source node and add other devices to the list
+        .then(deviceList => {
+            let sourceNode = {
+                hostname: "OpenWrt",
+                ip: openWrtIP,
+                mac: "--:--:--:--:--:--",
+                reachable: "true",
+                host: "192.168.1.1"
+            };
+            processedDeviceList.push(sourceNode)
+
+            let sdnNode = {
+                hostname: "vSwitch",
+                ip: "---.---.---.---",
+                mac: "--:--:--:--:--:--",
+                reachable: "true",
+                host: "192.168.1.1"
+            };
+            processedDeviceList.push(sdnNode)
+
+            for (let device of deviceList) {
+                let deviceEntry = {
+                    hostname: device.hostname,
+                    ip: device.ip,
+                    mac: device.mac,
+                    reachable: device.reachable,
+                    host: device.host
+                };
+                processedDeviceList.push(deviceEntry);
+            }
+            return processedDeviceList;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            return processedDeviceList;
+        });
+}
 
 // Retrieve mac-based communications from Open vSwitch
 export function getCommunications() {

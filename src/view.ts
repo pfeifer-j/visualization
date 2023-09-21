@@ -42,7 +42,9 @@ export async function generateView(htmlSource, config) {
     const linkWidthHighlighted = config.linkWidthHighlighted || 3;
     const openWrtIP = config.openWrtIP || "192.168.1.1";
     const hassIP = config.hassIP || "192.168.1.20";
+    const vSwtichIP = "---.---.---.---";
     const openWrtColor = config.openWrtColor || "#627dea";
+    const vSwtichColor = config.vSwtichColor || "#620dea";
     const graphForce = config.graphForce || -300;
     const duration = config.duration || 200;
     const mode = config.mode || "physical";
@@ -56,13 +58,16 @@ export async function generateView(htmlSource, config) {
     // Select the correct devices to be displayed. Used for the demo network
     let devices;
 
-    if (!config.isDemo) {
-        devices = await network.getDevices(openWrtIP);
-    } else {
-        devices = config.mode === "software"
-            ? await network.getDemoSdn()
-            : await network.getSmallNetwork();
-    }
+    devices = !config.isDemo
+        ? (config.mode === "physical"
+            ? await network.getDevicesPhysical(openWrtIP)
+            : await network.getDevicesSdn(openWrtIP))
+        : (config.mode === "physical"
+            ? await network.getSmallNetwork() // Change here for testing larger networks
+            : await network.getDemoSdn());
+
+    // Get the already isolated devices
+    let isolatedDevices = await network.getIsolatedDevices();
 
     try {
         devices.forEach((device) => {
@@ -70,7 +75,9 @@ export async function generateView(htmlSource, config) {
             let ip = device.ip;
             let mac = device.mac;
             let reachable = device.reachable;
-            let host = device.host;
+            let host = (config.mode === "software" && isolatedDevices.includes(mac.toLowerCase()))
+                ? "---.---.---.---"
+                : device.host;
 
             // Since there is a bug in the LuCi.rpc, the existence of the mac is enough to check if the device is reachable.
             // The next line can be removed when this bug in the api software is fixed.
@@ -120,10 +127,6 @@ export async function generateView(htmlSource, config) {
         .attr("fill", "transparent")
         .on("click", clearSelection);
 
-    // Get the already isolated devices
-    let isolatedDevices = await network.getIsolatedDevices();
-    console.log(isolatedDevices);
-
     // Fill graph with data
     let links = graphSvg
         .append("g")
@@ -156,6 +159,11 @@ export async function generateView(htmlSource, config) {
     graphSvg
         .select("circle[ip='" + openWrtIP + "']")
         .attr("fill", openWrtColor);
+
+    // Mark vSwitch node
+    graphSvg
+        .select("circle[ip='" + vSwtichIP + "']")
+        .attr("fill", vSwtichColor);
 
     // Add physics to the graph
     let simulation = d3
@@ -497,6 +505,13 @@ export async function generateView(htmlSource, config) {
             .select("circle[ip='" + openWrtIP + "']")
             .attr("r", unselectedRadius)
             .attr("fill", openWrtColor);
+
+        graphSvg
+            .transition()
+            .duration(duration)
+            .select("circle[ip='" + vSwtichIP + "']")
+            .attr("r", unselectedRadius)
+            .attr("fill", vSwtichColor);
 
         // Clear links
         graphSvg

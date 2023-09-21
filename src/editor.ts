@@ -118,6 +118,21 @@ export class NetworkVisualizationEditor extends LitElement {
           ></input>
     </div>
     <div class="row">
+    <label class="label cell" for="    <div class="row">
+       <label class="label cell" for="vSwitchColor">OpenWrt Color:</label>
+       <input
+          type="color"
+          @change="${this.handleChangedEvent}"
+          class="value cell" id="vSwitchColor" value="${this._config.vSwitchColor}"
+          ></input>
+    </div>">OpenWrt Color:</label>
+    <input
+       type="color"
+       @change="${this.handleChangedEvent}"
+       class="value cell" id="openWrtColor" value="${this._config.openWrtColor}"
+       ></input>
+    </div>
+    <div class="row">
        <label class="label cell" for="nodeReachable">Node Reachable Color:</label>
        <input
           type="color"
@@ -277,6 +292,9 @@ export class NetworkVisualizationEditor extends LitElement {
         break;
       case "openWrtColor":
         newConfig.openWrtColor = target.value;
+        break;
+      case "vSwitchColor":
+        newConfig.vSwitchColor = target.value;
         break;
       case "unselectedRadius":
         newConfig.unselectedRadius = parseInt(target.value);
